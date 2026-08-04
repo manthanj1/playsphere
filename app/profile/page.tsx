@@ -12,8 +12,6 @@ import {
   LogOut, 
   Calendar, 
   Trophy, 
-  Compass, 
-  Ticket, 
   User 
 } from "lucide-react";
 
@@ -85,7 +83,7 @@ export default function ProfilePage() {
   if (!userData) return null;
 
   return (
-    <div className="bg-[#f8f9ff] text-[#0b1c30] font-sans min-h-screen pb-20 md:pb-0 antialiased">
+    <div className="bg-[#f8f9ff] text-[#0b1c30] font-sans min-h-screen pb-6 md:pb-0 antialiased">
       
       {/* TopAppBar - Simplified to only show PlaySphere */}
       <header className="sticky top-0 z-50 bg-[#f8f9ff] shadow-sm w-full">
@@ -208,26 +206,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </main>
-
-      {/* BottomNavBar (Mobile Only) */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-[#f8f9ff] border-t border-[#c3c5d9] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-xl">
-        <Link href="/select-city" className="flex flex-col items-center justify-center text-[#434656] px-4 py-1 hover:bg-[#dce9ff] rounded-xl transition-all">
-          <Compass className="w-5 h-5 mb-1" />
-          <span className="text-xs font-medium">Explore</span>
-        </Link>
-        <Link href="#" className="flex flex-col items-center justify-center text-[#434656] px-4 py-1 hover:bg-[#dce9ff] rounded-xl transition-all">
-          <Trophy className="w-5 h-5 mb-1" />
-          <span className="text-xs font-medium">Competitions</span>
-        </Link>
-        <Link href="#" className="flex flex-col items-center justify-center text-[#434656] px-4 py-1 hover:bg-[#dce9ff] rounded-xl transition-all">
-          <Ticket className="w-5 h-5 mb-1" />
-          <span className="text-xs font-medium">Bookings</span>
-        </Link>
-        <Link href="/profile" className="flex flex-col items-center justify-center bg-[#0052ff] text-[#dfe3ff] rounded-xl px-4 py-1 scale-90 transition-all duration-150">
-          <User className="w-5 h-5 mb-1" fill="currentColor" />
-          <span className="text-xs font-bold">Profile</span>
-        </Link>
-      </nav>
     </div>
   );
 }
