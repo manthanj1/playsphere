@@ -62,9 +62,9 @@ export default function SelectCityPage() {
       {/* TopAppBar - Simplified */}
       <header className="bg-[#f8f9ff] shadow-sm fixed top-0 w-full z-50">
         <div className="flex justify-center md:justify-start items-center w-full px-4 md:px-12 py-4 max-w-[1280px] mx-auto">
-          <Link href="/" className="font-serif text-3xl md:text-4xl italic font-black text-[#003ec7] tracking-tighter hover:text-[#0052ff] transition-colors">
+          <span className="font-serif text-3xl md:text-4xl italic font-black text-[#003ec7] tracking-tighter hover:text-[#0052ff] transition-colors">
             PlaySphere
-          </Link>
+          </span>
         </div>
       </header>
 

@@ -6,8 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { 
   Trophy, 
   PartyPopper, 
-  Compass, 
-  Ticket, 
   User, 
   ArrowRight,
   ArrowLeft,
@@ -28,13 +26,13 @@ function ChooseActivityContent() {
       <header className="fixed w-full top-0 z-50 bg-[#f8f9ff] shadow-sm">
         <div className="flex justify-between items-center w-full px-4 md:px-12 py-4 max-w-[1280px] mx-auto relative">
           
-          {/* Left: Logo */}
-          <Link href="/" className="text-3xl md:text-4xl italic font-black font-serif text-[#003ec7] tracking-tighter">
+          {/* Left: Logo (Changed to span to disable navigation) */}
+          <span className="text-3xl md:text-4xl italic font-black font-serif text-[#003ec7] tracking-tighter cursor-default select-none">
             PlaySphere
-          </Link>
+          </span>
           
-          {/* Center: Selected City */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-1.5 px-4 py-1.5 bg-[#e5eeff] text-[#003ec7] rounded-full border border-[#d3e4fe] shadow-sm">
+          {/* Center: Selected City (Hidden on mobile to avoid duplication with bottom bar) */}
+          <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-1.5 px-4 py-1.5 bg-[#e5eeff] text-[#003ec7] rounded-full border border-[#d3e4fe] shadow-sm">
             <MapPin className="w-4 h-4" />
             <span className="text-sm font-semibold tracking-wide">
               City - {cityName}
@@ -167,25 +165,15 @@ function ChooseActivityContent() {
         </div>
       </main>
 
-      {/* BottomNavBar (Mobile Only) */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-[#f8f9ff] border-t border-[#c3c5d9] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-xl">
-        <Link href="#" className="flex flex-col items-center justify-center bg-[#0052ff] text-[#dfe3ff] rounded-xl px-4 py-1 scale-90 transition-all duration-150">
-          <Compass className="w-5 h-5 mb-1" />
-          <span className="text-xs font-medium">Explore</span>
-        </Link>
-        <Link href="#" className="flex flex-col items-center justify-center text-[#434656] px-4 py-1 hover:bg-[#dce9ff] rounded-xl transition-all">
-          <Trophy className="w-5 h-5 mb-1" />
-          <span className="text-xs font-medium">Competitions</span>
-        </Link>
-        <Link href="#" className="flex flex-col items-center justify-center text-[#434656] px-4 py-1 hover:bg-[#dce9ff] rounded-xl transition-all">
-          <Ticket className="w-5 h-5 mb-1" />
-          <span className="text-xs font-medium">Bookings</span>
-        </Link>
-        <Link href="/profile" className="flex flex-col items-center justify-center text-[#434656] px-4 py-1 hover:bg-[#dce9ff] rounded-xl transition-all">
-          <User className="w-5 h-5 mb-1" />
-          <span className="text-xs font-medium">Profile</span>
-        </Link>
-      </nav>
+      {/* Bottom Mobile Bar - Displaying City Name Only */}
+      <div className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-center items-center px-4 py-4 bg-[#f8f9ff] border-t border-[#c3c5d9] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-xl">
+        <div className="flex items-center gap-2 px-6 py-2 bg-[#e5eeff] text-[#003ec7] rounded-full border border-[#d3e4fe] shadow-sm">
+          <MapPin className="w-5 h-5" />
+          <span className="text-base font-semibold tracking-wide">
+            City - {cityName}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

@@ -15,32 +15,22 @@ import {
   Coffee,
   Share2,
   Heart,
-  User
+  User,
+  AlertCircle
 } from "lucide-react";
 
-// --- MOCK DETAILED TURF DATA ---
-// In reality, you would fetch this based on the `id` from the URL
-const turfDetail = {
-  id: "1",
-  name: "Spartan Box Cricket",
-  city: "Ahmedabad",
-  address: "Next to Taj Skyline, Sindhu Bhavan Road, Bodakdev",
-  sport: "Cricket",
-  price: 1200,
-  rating: 4.8,
-  reviews: 124,
-  description: "Experience premium box cricket at Spartan Arena. Equipped with high-visibility LED floodlights, 50mm FIFA-approved artificial turf, and ample spectator seating. Perfect for corporate tournaments and casual weekend matches alike.",
-  images: [
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuCGfeX0XI_wpvEB1xxJFMRJ2f-K3RKFTfO7uI91bcYsjBr4bcBHLT9y3EYSM9u0l6yDYB3arqXj1meUTnWT59643bCrQBpdml-w0pswnULSj_D5Y7q1Ey122B7AXtBz2sh1znbwuGFPRFctu670WL3vHP1tpr_AtKtYG0ddB2wyjhlGW0dLoDpJLAHQiQY5xZAcLvZTCJSQEqwiXACf6n3iU-abOn4Gw1ai2kQrh41gYPtpD-RXu3nFiA"
-  ],
-  amenities: [
-    { icon: Car, label: "Free Parking" },
-    { icon: Droplets, label: "RO Water" },
-    { icon: Lightbulb, label: "LED Floodlights" },
-    { icon: ShieldCheck, label: "First Aid Kit" },
-    { icon: Coffee, label: "Cafeteria" },
-  ]
-};
+// --- MOCK DATA ---
+// Brought over from the sports listing page to match IDs
+const mockTurfs = [
+  { id: 1, name: "Spartan Box Cricket", city: "Ahmedabad", location: "Sindhu Bhavan Road", sport: "Cricket", price: 1200, rating: 4.8, reviews: 124, image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCGfeX0XI_wpvEB1xxJFMRJ2f-K3RKFTfO7uI91bcYsjBr4bcBHLT9y3EYSM9u0l6yDYB3arqXj1meUTnWT59643bCrQBpdml-w0pswnULSj_D5Y7q1Ey122B7AXtBz2sh1znbwuGFPRFctu670WL3vHP1tpr_AtKtYG0ddB2wyjhlGW0dLoDpJLAHQiQY5xZAcLvZTCJSQEqwiXACf6n3iU-abOn4Gw1ai2kQrh41gYPtpD-RXu3nFiA" },
+  { id: 2, name: "KickOff Football Arena", city: "Ahmedabad", location: "SG Highway", sport: "Football", price: 1500, rating: 4.9, reviews: 89, image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAWszFO7fxEiOqntziJH-UA_0cTaOkgvM8MTC6YL8Jq1JJstsQYLtGViWCrEidQzTi40uaIjb1xJP0mt6RqoRWH6DdVE3wJ2UaigICABlBBvASi53QkqyHf6Ca4zaYzOP0KvNjhBYYsHvcbeJ-swjj07xwnHel3QFrO4xmr_e9R9b2-nAVWin1E2k3eyhA81rNUb2nVoTa-fbWZPJmnDvi8cNqhFdQ4GJ2hIZbOKsw3x0_T9yhvRUF9dg" },
+  { id: 3, name: "Titan Padel Hub", city: "Ahmedabad", location: "Thaltej", sport: "Padel", price: 1800, rating: 4.9, reviews: 32, image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDIYAl0mhbrDKB0O6fLp583SWF_-3FxSM_Rcq6aG-mu4tZDrRZQYYFUeZ0IL3_UtT--uGg5bsxE_hmcVhppWwSvyg-GXP33RDyjdTS1Es6sNfjQy6DC8yieogTbvHjzVWjOr-AW-LOQ5wOQaSI0fDnR8jXW5IHLhpQEBbv4xVQsQqAqzo61zuCLCmrBzwaWr8ah8S8tk0VXYGiDGtGKjDc4DoTctkRglNI4PdHw79O623k31isvI5jnpQ" },
+  { id: 4, name: "Diamond City Sports Hub", city: "Surat", location: "Vesu", sport: "Cricket", price: 1000, rating: 4.7, reviews: 210, image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCGfeX0XI_wpvEB1xxJFMRJ2f-K3RKFTfO7uI91bcYsjBr4bcBHLT9y3EYSM9u0l6yDYB3arqXj1meUTnWT59643bCrQBpdml-w0pswnULSj_D5Y7q1Ey122B7AXtBz2sh1znbwuGFPRFctu670WL3vHP1tpr_AtKtYG0ddB2wyjhlGW0dLoDpJLAHQiQY5xZAcLvZTCJSQEqwiXACf6n3iU-abOn4Gw1ai2kQrh41gYPtpD-RXu3nFiA" },
+  { id: 5, name: "Tapi Green Football", city: "Surat", location: "Adajan", sport: "Football", price: 1400, rating: 4.6, reviews: 167, image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAWszFO7fxEiOqntziJH-UA_0cTaOkgvM8MTC6YL8Jq1JJstsQYLtGViWCrEidQzTi40uaIjb1xJP0mt6RqoRWH6DdVE3wJ2UaigICABlBBvASi53QkqyHf6Ca4zaYzOP0KvNjhBYYsHvcbeJ-swjj07xwnHel3QFrO4xmr_e9R9b2-nAVWin1E2k3eyhA81rNUb2nVoTa-fbWZPJmnDvi8cNqhFdQ4GJ2hIZbOKsw3x0_T9yhvRUF9dg" },
+  { id: 6, name: "Surat Tennis Academy", city: "Surat", location: "Piplod", sport: "Tennis", price: 900, rating: 4.8, reviews: 88, image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDIYAl0mhbrDKB0O6fLp583SWF_-3FxSM_Rcq6aG-mu4tZDrRZQYYFUeZ0IL3_UtT--uGg5bsxE_hmcVhppWwSvyg-GXP33RDyjdTS1Es6sNfjQy6DC8yieogTbvHjzVWjOr-AW-LOQ5wOQaSI0fDnR8jXW5IHLhpQEBbv4xVQsQqAqzo61zuCLCmrBzwaWr8ah8S8tk0VXYGiDGtGKjDc4DoTctkRglNI4PdHw79O623k31isvI5jnpQ" },
+  { id: 7, name: "Banyan City Box", city: "Vadodara", location: "Alkapuri", sport: "Cricket", price: 1100, rating: 4.5, reviews: 56, image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCGfeX0XI_wpvEB1xxJFMRJ2f-K3RKFTfO7uI91bcYsjBr4bcBHLT9y3EYSM9u0l6yDYB3arqXj1meUTnWT59643bCrQBpdml-w0pswnULSj_D5Y7q1Ey122B7AXtBz2sh1znbwuGFPRFctu670WL3vHP1tpr_AtKtYG0ddB2wyjhlGW0dLoDpJLAHQiQY5xZAcLvZTCJSQEqwiXACf6n3iU-abOn4Gw1ai2kQrh41gYPtpD-RXu3nFiA" },
+  { id: 8, name: "Vadodara Multi-Sport Arena", city: "Vadodara", location: "Sama-Savli Road", sport: "Multi-sport", price: 1300, rating: 4.7, reviews: 142, image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCALijbBIkKtCLNRjYE26kZ8HXn2wPWzKImGBd6WTKylX9XeYw8ENhGlI3DFh_g-PQTzfS8FfvLvKXDR1Yvgq3UCDDEpvf28UuRVFw-UJy9IM5lc__h3I1WJfQuHXKYoRCOcu6z7ButltxHOF-2z5d8HVCPunwtunrYEa8Q3cwyWRdGMqmB2bIpjYFX0MqA2icSArQRTjag9m19j1VOoQm84wMLdAQg8p8TjOTsUhWUY0tOEGjBEhG4sQ" }
+];
 
 // Generate next 7 days for the date picker
 const generateDates = () => {
@@ -67,11 +57,14 @@ const timeSlots = [
 
 export default function TurfDetailPage() {
   const router = useRouter();
-  const params = useParams();
+  const params = useParams(); // Fetch the ID from the URL
   
   const dates = generateDates();
-  const [selectedDate, setSelectedDate] = useState(0); // Index of selected date
+  const [selectedDate, setSelectedDate] = useState(0); 
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+
+  // Find the specific turf based on the URL ID parameter
+  const baseTurf = mockTurfs.find((t) => t.id.toString() === params.id);
 
   const toggleSlot = (slot: string) => {
     if (selectedSlots.includes(slot)) {
@@ -79,6 +72,35 @@ export default function TurfDetailPage() {
     } else {
       setSelectedSlots([...selectedSlots, slot]);
     }
+  };
+
+  // If the ID in the URL doesn't match any data, show an error state
+  if (!baseTurf) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f8f9ff] text-[#0b1c30]">
+        <AlertCircle className="w-12 h-12 text-[#e11d48] mb-4" />
+        <h1 className="text-2xl font-bold font-serif mb-2">Arena Not Found</h1>
+        <p className="text-[#434656] mb-6">We couldn't find the sports arena you're looking for.</p>
+        <button onClick={() => router.back()} className="text-[#003ec7] font-semibold hover:underline inline-flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" /> Go Back
+        </button>
+      </div>
+    );
+  }
+
+  // Construct the full detailed view dynamically based on the matched turf
+  const turfDetail = {
+    ...baseTurf,
+    address: `${baseTurf.location}, ${baseTurf.city}`,
+    description: `Experience premium ${baseTurf.sport.toLowerCase()} at ${baseTurf.name}. Equipped with high-visibility LED floodlights, professional-grade surfaces, and ample spectator seating. Perfect for corporate tournaments and casual weekend matches alike.`,
+    images: [baseTurf.image],
+    amenities: [
+      { icon: Car, label: "Free Parking" },
+      { icon: Droplets, label: "RO Water" },
+      { icon: Lightbulb, label: "LED Floodlights" },
+      { icon: ShieldCheck, label: "First Aid Kit" },
+      { icon: Coffee, label: "Cafeteria" },
+    ]
   };
 
   const totalPrice = selectedSlots.length * turfDetail.price;
@@ -89,9 +111,9 @@ export default function TurfDetailPage() {
       {/* TopAppBar */}
       <header className="sticky w-full top-0 z-50 bg-[#f8f9ff] shadow-sm">
         <div className="flex justify-between items-center w-full px-4 md:px-12 py-4 max-w-[1280px] mx-auto relative">
-          <Link href="/" className="text-3xl md:text-4xl italic font-black font-serif text-[#003ec7] tracking-tighter">
+          <span className="text-3xl md:text-4xl italic font-black font-serif text-[#003ec7] tracking-tighter">
             PlaySphere
-          </Link>
+          </span>
           <Link 
             href="/profile" 
             className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-[#003ec7] bg-[#e5eeff] transition-colors shadow-sm hover:scale-105 active:scale-95"
@@ -274,17 +296,17 @@ export default function TurfDetailPage() {
               )}
 
               <Link href="/payment" className="w-full">
-  <button 
-    disabled={selectedSlots.length === 0}
-    className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
-      selectedSlots.length > 0 
-      ? "bg-[#003ec7] text-white hover:bg-[#002f96] hover:shadow-lg transform hover:-translate-y-1" 
-      : "bg-[#e5eeff] text-[#737688] cursor-not-allowed"
-    }`}
-  >
-    {selectedSlots.length > 0 ? "Proceed to Payment" : "Select a Time Slot"}
-  </button>
-</Link>
+                <button 
+                  disabled={selectedSlots.length === 0}
+                  className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
+                    selectedSlots.length > 0 
+                    ? "bg-[#003ec7] text-white hover:bg-[#002f96] hover:shadow-lg transform hover:-translate-y-1" 
+                    : "bg-[#e5eeff] text-[#737688] cursor-not-allowed"
+                  }`}
+                >
+                  {selectedSlots.length > 0 ? "Proceed to Payment" : "Select a Time Slot"}
+                </button>
+              </Link>
             </div>
           </div>
         </div>

@@ -3,11 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogIn, AlertCircle } from "lucide-react";
+import { LogIn, AlertCircle, Eye, EyeOff } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
 export default function LoginPage() {
-  const router = useRouter(); // Initialize the router
+  const router = useRouter(); 
   
   const [formData, setFormData] = useState({
     email: "",
@@ -18,6 +18,9 @@ export default function LoginPage() {
     email: "",
     password: "",
   });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -43,8 +46,12 @@ export default function LoginPage() {
       isValid = false;
     }
 
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
     if (!formData.password) {
       newErrors.password = "Password is required to fill.";
+      isValid = false;
+    } else if (!passwordRegex.test(formData.password)) {
+      newErrors.password = "Must contain 8+ chars, 1 uppercase, 1 lowercase, 1 number, and 1 special char.";
       isValid = false;
     }
 
@@ -59,13 +66,13 @@ export default function LoginPage() {
       return; 
     }
 
-    // Trigger success toast
+    setIsSubmitting(true);
+
     toast.success("Welcome back to the game!", {
       style: { border: '1px solid #c3c5d9', padding: '16px', color: '#0b1c30', background: '#ffffff' },
       iconTheme: { primary: '#003ec7', secondary: '#ffffff' },
     });
 
-    // Redirect to Select City page after a short delay
     setTimeout(() => {
       router.push("/select-city");
     }, 1500);
@@ -100,6 +107,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
             <div className="flex flex-col gap-4">
               
+              {/* Email Address */}
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-semibold text-[#0b1c30]" htmlFor="email">
                   Email Address
@@ -118,6 +126,7 @@ export default function LoginPage() {
                 )}
               </div>
 
+              {/* Password */}
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center">
                   <label className="text-sm font-semibold text-[#0b1c30]" htmlFor="password">Password</label>
@@ -125,25 +134,43 @@ export default function LoginPage() {
                     Forgot password?
                   </Link>
                 </div>
-                <input 
-                  id="password" name="password" type="password" value={formData.password} onChange={handleChange}
-                  placeholder="••••••••" 
-                  className={`w-full bg-white border rounded-lg px-4 py-3 text-base text-[#0b1c30] placeholder:text-[#737688] focus:outline-none transition-colors ${
-                    errors.password ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500" : "border-[#c3c5d9] focus:border-[#003ec7] focus:ring-1 focus:ring-[#003ec7]"
-                  }`}
-                />
+
+                <div className="relative">
+                  <input 
+                    id="password" name="password" 
+                    type={showPassword ? "text" : "password"} 
+                    value={formData.password} onChange={handleChange}
+                    placeholder="••••••••" 
+                    className={`w-full bg-white border rounded-lg pl-4 pr-12 py-3 text-base text-[#0b1c30] placeholder:text-[#737688] focus:outline-none transition-colors ${
+                      errors.password ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500" : "border-[#c3c5d9] focus:border-[#003ec7] focus:ring-1 focus:ring-[#003ec7]"
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#737688] hover:text-[#0b1c30] transition-colors focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
                 {errors.password && (
-                  <div className="flex items-center gap-1 mt-0.5 text-red-500 text-xs font-medium">
-                    <AlertCircle className="w-3.5 h-3.5" /><span>{errors.password}</span>
+                  <div className="flex items-start gap-1 mt-0.5 text-red-500 text-xs font-medium">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /><span>{errors.password}</span>
                   </div>
                 )}
               </div>
             </div>
 
             <div className="flex flex-col gap-4 pt-2">
-              <button type="submit" className="w-full bg-[#003ec7] hover:bg-[#0038b6] text-white font-bold text-lg py-3 px-6 rounded-lg shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2">
-                Sign In
-                <LogIn className="w-5 h-5" />
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className={`w-full text-white font-bold text-lg py-3 px-6 rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 ${
+                  isSubmitting ? "bg-[#003ec7]/70 cursor-not-allowed" : "bg-[#003ec7] hover:bg-[#0038b6] active:scale-95"
+                }`}
+              >
+                {isSubmitting ? "Signing In..." : "Sign In"}
+                {!isSubmitting && <LogIn className="w-5 h-5" />}
               </button>
               
               <div className="relative flex items-center py-2">

@@ -154,9 +154,9 @@ function SportsListingContent() {
         <div className="flex justify-between items-center w-full px-4 md:px-12 py-4 max-w-[1280px] mx-auto relative">
           
           {/* Left: Logo */}
-          <Link href="/" className="text-3xl md:text-4xl italic font-black font-serif text-[#003ec7] tracking-tighter">
+          <span className="text-3xl md:text-4xl italic font-black font-serif text-[#003ec7] tracking-tighter">
             PlaySphere
-          </Link>
+          </span>
           
           {/* Center: Selected City */}
           <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-1.5 px-4 py-1.5 bg-[#e5eeff] text-[#003ec7] rounded-full border border-[#d3e4fe] shadow-sm">
@@ -279,11 +279,11 @@ function SportsListingContent() {
                     </div>
                     
                     <Link 
-  href={`/turf/${turf.id}`}
-  className="bg-[#e5eeff] hover:bg-[#003ec7] text-[#003ec7] hover:text-white transition-colors duration-200 px-6 py-2.5 rounded-lg font-semibold text-sm inline-flex items-center justify-center"
->
-  Book Now
-</Link>
+                        href={`/turf/${turf.id}`}
+                        className="bg-[#e5eeff] hover:bg-[#003ec7] text-[#003ec7] hover:text-white transition-colors duration-200 px-6 py-2.5 rounded-lg font-semibold text-sm inline-flex items-center justify-center"
+                        >
+                          Book Now
+                    </Link>
                   </div>
                 </div>
               </div>

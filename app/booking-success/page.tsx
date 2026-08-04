@@ -90,7 +90,7 @@ export default function BookingSuccessPage() {
               </Link>
               
               <Link 
-                href="/choose-activity"
+                href="/select-city"
                 className="w-full flex items-center justify-center gap-2 bg-white border-2 border-[#e5eeff] text-[#0b1c30] py-3.5 rounded-xl font-bold hover:bg-[#f8f9ff] hover:border-[#003ec7] transition-all"
               >
                 <Home className="w-5 h-5" />

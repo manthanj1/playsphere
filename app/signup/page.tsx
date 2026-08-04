@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { User, Mail, Phone, Lock, X, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation"; // 1. Imported useRouter
+import { User, Mail, Phone, Lock, X, AlertCircle, Eye, EyeOff } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
 export default function SignUpPage() {
+  const router = useRouter(); // Initialize router
+
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -23,6 +26,8 @@ export default function SignUpPage() {
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Added submitting state to prevent double clicks
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -40,29 +45,42 @@ export default function SignUpPage() {
     let isValid = true;
     const newErrors = { ...errors };
 
+    // Full Name Validation
     if (!formData.fullName.trim()) {
-      newErrors.fullName = "Full Name is required to fill.";
+      newErrors.fullName = "Full Name is required.";
       isValid = false;
     }
 
+    // Email Validation
     if (!formData.email.trim()) {
-      newErrors.email = "Email Address is required to fill.";
+      newErrors.email = "Email Address is required.";
       isValid = false;
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "Please enter a valid email address.";
       isValid = false;
     }
 
+    // Phone Validation (10 digits starting with 6-9)
     if (!formData.phone.trim()) {
-      newErrors.phone = "Phone Number is required to fill.";
+      newErrors.phone = "Phone Number is required.";
+      isValid = false;
+    } else if (!/^[6-9]\d{9}$/.test(formData.phone)) {
+      newErrors.phone = "Enter a valid 10-digit phone number.";
       isValid = false;
     }
 
+    // 2. Strong Password Validation
+    // Requires: 8+ chars, 1 uppercase, 1 lowercase, 1 number, 1 special character
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
     if (!formData.password) {
-      newErrors.password = "Password is required to fill.";
+      newErrors.password = "Password is required.";
+      isValid = false;
+    } else if (!passwordRegex.test(formData.password)) {
+      newErrors.password = "Must contain 8+ chars, 1 uppercase, 1 lowercase, 1 number, and 1 special character.";
       isValid = false;
     }
 
+    // Terms Validation
     if (!formData.termsAccepted) {
       newErrors.termsAccepted = "You must accept the Terms of Service.";
       isValid = false;
@@ -75,13 +93,13 @@ export default function SignUpPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Stop submission if form is invalid, but do not show a toast error
     if (!validateForm()) {
       return; 
     }
 
-    // Only show toast for major success actions
-    toast.success("Account created successfully! Welcome to PlaySphere.", {
+    setIsSubmitting(true); // Disable button during redirect
+
+    toast.success("Account created successfully! Redirecting to login...", {
       style: {
         border: '1px solid #c3c5d9',
         padding: '16px',
@@ -92,16 +110,26 @@ export default function SignUpPage() {
         primary: '#003ec7',
         secondary: '#ffffff',
       },
+      duration: 2000,
     });
 
+    // 3. Redirect to login page after a short delay so the user sees the toast
+    setTimeout(() => {
+      router.push("/login");
+    }, 2000);
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] flex items-center justify-center p-4 md:p-12 font-sans">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 md:p-12 font-sans bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDLeaaohOQitQdYpGB_pMF3w5uVDxCakxtdkmJSupwPHZ-hXctZRKoyEsMDtumnt5VFJWuwH8OF5Qksn83xt3xnTRB4Utq3993lfKTLhD9HAB_Tvi_w4x6mfDDffCDeMnDmRNU30HE4ShvHFRnhbtT3jf5Nt_AgIjmQAAi-3aXgigQTWac3jtNA6Ug7jZiwGIB9B9gqu60aavgUbm3sfkyEGMhSYHIkfFHN1-XGRFd8Y9Z9ZJdmdDhfYw')" }}
+    >
+      <div className="absolute inset-0 bg-[#0b1c30]/50 backdrop-blur-sm"></div>
+
       <Toaster position="top-center" reverseOrder={false} />
 
-      <main className="w-full max-w-[480px] bg-white rounded-2xl shadow-[0_4px_20px_rgba(11,28,48,0.05)] border border-[#c3c5d9] p-8 relative overflow-hidden">
-        {/* Header */}
+      <main className="w-full max-w-[480px] bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 p-8 relative z-10">
+        
         <div className="text-center mb-8 relative z-10">
           <h1 className="font-extrabold text-4xl md:text-5xl text-[#003ec7] italic tracking-tighter mb-2 font-serif">
             PlaySphere
@@ -111,7 +139,6 @@ export default function SignUpPage() {
           </p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} noValidate className="space-y-6 relative z-10">
           <div className="space-y-4">
             
@@ -128,7 +155,7 @@ export default function SignUpPage() {
                   type="text"
                   value={formData.fullName}
                   onChange={handleChange}
-                  placeholder="Manthan J"
+                  placeholder="Manthan Jotaniya"
                   className={`w-full pl-10 pr-4 py-3 bg-white border rounded-lg text-base text-[#0b1c30] placeholder:text-[#737688] focus:outline-none transition-colors ${
                     errors.fullName 
                       ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500" 
@@ -184,9 +211,10 @@ export default function SignUpPage() {
                   id="phone"
                   name="phone"
                   type="tel"
+                  maxLength={10}
                   value={formData.phone}
                   onChange={handleChange}
-                  placeholder="+91 98765 43210"
+                  placeholder="98765 43210"
                   className={`w-full pl-10 pr-4 py-3 bg-white border rounded-lg text-base text-[#0b1c30] placeholder:text-[#737688] focus:outline-none transition-colors ${
                     errors.phone 
                       ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500" 
@@ -212,20 +240,27 @@ export default function SignUpPage() {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className={`w-full pl-10 pr-4 py-3 bg-white border rounded-lg text-base text-[#0b1c30] placeholder:text-[#737688] focus:outline-none transition-colors ${
+                  className={`w-full pl-10 pr-12 py-3 bg-white border rounded-lg text-base text-[#0b1c30] placeholder:text-[#737688] focus:outline-none transition-colors ${
                     errors.password 
                       ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500" 
                       : "border-[#c3c5d9] focus:border-[#003ec7] focus:ring-1 focus:ring-[#003ec7]"
                   }`}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#737688] hover:text-[#0b1c30] transition-colors focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
               {errors.password && (
-                <div className="flex items-center gap-1 mt-1.5 text-red-500 text-xs font-medium">
-                  <AlertCircle className="w-3.5 h-3.5" />
+                <div className="flex items-start gap-1 mt-1.5 text-red-500 text-xs font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                   <span>{errors.password}</span>
                 </div>
               )}
@@ -267,9 +302,14 @@ export default function SignUpPage() {
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-[#003ec7] text-white font-bold text-lg py-3 px-6 rounded-lg shadow-sm hover:shadow-[0_12px_32px_rgba(11,28,48,0.12)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+            disabled={isSubmitting}
+            className={`w-full text-white font-bold text-lg py-3 px-6 rounded-lg shadow-sm transition-all duration-200 ${
+              isSubmitting 
+                ? "bg-[#003ec7]/70 cursor-not-allowed" 
+                : "bg-[#003ec7] hover:shadow-[0_12px_32px_rgba(11,28,48,0.12)] hover:-translate-y-0.5 cursor-pointer"
+            }`}
           >
-            Create Account
+            {isSubmitting ? "Creating Account..." : "Create Account"}
           </button>
 
           <p className="text-center text-base text-[#434656] mt-4">
@@ -281,7 +321,7 @@ export default function SignUpPage() {
         </form>
       </main>
 
-      {/* Terms of Service Modal */}
+      {/* Terms Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity">
           <div className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all">
