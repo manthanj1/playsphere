@@ -4,8 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  Bell, 
-  Search, 
+  ArrowLeft,
   Pencil, 
   Mail, 
   Phone, 
@@ -13,8 +12,6 @@ import {
   LogOut, 
   Calendar, 
   Trophy, 
-  CheckCircle, 
-  UserPlus, 
   Compass, 
   Ticket, 
   User 
@@ -37,14 +34,12 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Fetch the logged-in user data from localStorage (or your state manager)
-    // Replace 'playSphereUser' with whatever key you used in your Login flow
+    // Fetch the logged-in user data from localStorage
     const storedUser = localStorage.getItem("playSphereUser");
 
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        // Map the stored data to our profile state, providing defaults for missing fields
         setUserData({
           name: parsedUser.name || "Player One",
           email: parsedUser.email || "player@example.com",
@@ -58,11 +53,7 @@ export default function ProfilePage() {
         console.error("Failed to parse user data");
       }
     } else {
-      // 2. If no user is found, redirect to the login page
-      // Uncomment the line below once your routing is fully set up
-      // router.push("/login");
-      
-      // For now, we will just set a fallback so the page doesn't crash during development
+      // Fallback so the page doesn't crash during development
       setUserData({
         name: "Guest User",
         email: "guest@playsphere.com",
@@ -78,13 +69,10 @@ export default function ProfilePage() {
   }, [router]);
 
   const handleLogout = () => {
-    // Clear the user session
     localStorage.removeItem("playSphereUser");
-    // Redirect to login page
     router.push("/login");
   };
 
-  // Show a loading state while checking authentication
   if (isLoading) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-[#f8f9ff] text-[#003ec7]">
@@ -94,50 +82,31 @@ export default function ProfilePage() {
     );
   }
 
-  // Ensure userData exists before rendering to avoid TS errors
   if (!userData) return null;
 
   return (
     <div className="bg-[#f8f9ff] text-[#0b1c30] font-sans min-h-screen pb-20 md:pb-0 antialiased">
       
-      {/* TopAppBar */}
+      {/* TopAppBar - Simplified to only show PlaySphere */}
       <header className="sticky top-0 z-50 bg-[#f8f9ff] shadow-sm w-full">
-        <div className="flex justify-between items-center w-full px-4 md:px-12 py-4 max-w-[1280px] mx-auto">
-          <Link href="/" className="text-3xl md:text-4xl italic font-black font-serif text-[#003ec7] tracking-tighter">
+        <div className="flex items-center w-full px-4 md:px-12 py-4 max-w-[1280px] mx-auto">
+          <span className="text-3xl md:text-4xl italic font-black font-serif text-[#003ec7] tracking-tighter">
             PlaySphere
-          </Link>
-          
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex gap-8 items-center h-full">
-            <Link href="/select-city" className="text-[#434656] font-medium hover:text-[#003ec7] transition-colors py-2 text-sm tracking-wide">
-              Explore
-            </Link>
-            <Link href="#" className="text-[#434656] font-medium hover:text-[#003ec7] transition-colors py-2 text-sm tracking-wide">
-              Competitions
-            </Link>
-            <Link href="#" className="text-[#434656] font-medium hover:text-[#003ec7] transition-colors py-2 text-sm tracking-wide">
-              Bookings
-            </Link>
-            <Link href="/profile" className="text-[#003ec7] font-bold border-b-2 border-[#003ec7] hover:text-[#003ec7] transition-colors py-2 text-sm tracking-wide">
-              Profile
-            </Link>
-          </nav>
-          
-          <div className="flex items-center gap-4">
-            <button className="text-[#003ec7] p-2 hover:bg-[#dce9ff] rounded-full transition-colors flex items-center justify-center">
-              <Bell className="w-5 h-5" />
-            </button>
-            <button className="text-[#003ec7] p-2 hover:bg-[#dce9ff] rounded-full transition-colors flex items-center justify-center">
-              <Search className="w-5 h-5" />
-            </button>
-            <div className="hidden md:block w-10 h-10 rounded-full overflow-hidden border-2 border-[#003ec7] bg-[#e5eeff] flex items-center justify-center">
-              <User className="w-6 h-6 text-[#003ec7] mt-1" />
-            </div>
-          </div>
+          </span>
         </div>
       </header>
 
-      <main className="max-w-[1280px] mx-auto px-4 md:px-12 py-8 md:py-16">
+      <main className="max-w-[1280px] mx-auto px-4 md:px-12 py-6 md:py-10">
+        
+        {/* Dynamic Back Button */}
+        <button 
+          onClick={() => router.back()}
+          className="inline-flex items-center gap-2 text-[#434656] hover:text-[#003ec7] font-medium transition-colors mb-6 md:mb-8"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </button>
+
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           
           {/* Profile Sidebar / Header */}
@@ -153,7 +122,6 @@ export default function ProfilePage() {
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                {/* Dynamically inserted User Name & Bio */}
                 <h1 className="text-2xl font-bold font-serif text-[#0b1c30] mb-1">{userData.name}</h1>
                 <p className="text-base text-[#434656] mb-6">{userData.bio}</p>
                 
@@ -176,17 +144,14 @@ export default function ProfilePage() {
               <ul className="flex flex-col gap-4">
                 <li className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-[#737688]" />
-                  {/* Dynamically inserted Email */}
                   <span className="text-base">{userData.email}</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Phone className="w-5 h-5 text-[#737688]" />
-                  {/* Dynamically inserted Phone */}
                   <span className="text-base">{userData.phone}</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <MapPin className="w-5 h-5 text-[#737688]" />
-                  {/* Dynamically inserted Location */}
                   <span className="text-base">{userData.location}</span>
                 </li>
               </ul>
@@ -207,8 +172,6 @@ export default function ProfilePage() {
 
           {/* Main Content Area */}
           <div className="md:col-span-8 flex flex-col gap-8 mt-8 md:mt-0">
-            {/* The rest of your Upcoming Bookings & Recent Activity content goes here... */}
-            {/* Keeping it identical to the previous step for layout consistency */}
             
             <section>
               <div className="flex justify-between items-end mb-6">
@@ -219,7 +182,7 @@ export default function ProfilePage() {
               </div>
               
               <div className="flex flex-col gap-4">
-                {/* Booking Card 1 */}
+                {/* Booking Card */}
                 <div className="bg-white rounded-2xl border border-[#c3c5d9] p-0 shadow-[0_4px_20px_rgba(11,28,48,0.05)] hover:shadow-[0_12px_32px_rgba(11,28,48,0.12)] transition-shadow hover:-translate-y-1 transform duration-200 overflow-hidden flex flex-col sm:flex-row">
                   <div className="sm:w-1/3 h-48 sm:h-auto relative bg-[#e5eeff] flex items-center justify-center">
                     <Trophy className="w-12 h-12 text-[#003ec7] opacity-20 absolute" />
