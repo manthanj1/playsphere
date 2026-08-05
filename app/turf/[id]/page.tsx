@@ -1,5 +1,7 @@
 "use client";
 
+import Navbar from "@/components/Navbar";
+import PageContainer from "@/components/PageContainer";
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -108,20 +110,7 @@ export default function TurfDetailPage() {
   return (
     <div className="bg-[#f8f9ff] text-[#0b1c30] min-h-screen font-sans antialiased pb-20 md:pb-0">
       
-      {/* TopAppBar */}
-      <header className="sticky w-full top-0 z-50 bg-[#f8f9ff] shadow-sm">
-        <div className="flex justify-between items-center w-full px-4 md:px-12 py-4 max-w-[1280px] mx-auto relative">
-          <span className="text-3xl md:text-4xl italic font-black font-serif text-[#003ec7] tracking-tighter">
-            PlaySphere
-          </span>
-          <Link 
-            href="/profile" 
-            className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-[#003ec7] bg-[#e5eeff] transition-colors shadow-sm hover:scale-105 active:scale-95"
-          >
-            <User className="w-5 h-5 text-[#003ec7]" />
-          </Link>
-        </div>
-      </header>
+    <Navbar />
 
       <main className="max-w-[1280px] mx-auto px-4 md:px-12 py-6 md:py-8">
         

@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // 1. Imported useRouter
+import { useRouter } from "next/navigation"; 
 import { User, Mail, Phone, Lock, X, AlertCircle, Eye, EyeOff } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
 export default function SignUpPage() {
-  const router = useRouter(); // Initialize router
+  const router = useRouter(); 
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -27,7 +27,7 @@ export default function SignUpPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Added submitting state to prevent double clicks
+  const [isSubmitting, setIsSubmitting] = useState(false); 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -45,13 +45,11 @@ export default function SignUpPage() {
     let isValid = true;
     const newErrors = { ...errors };
 
-    // Full Name Validation
     if (!formData.fullName.trim()) {
       newErrors.fullName = "Full Name is required.";
       isValid = false;
     }
 
-    // Email Validation
     if (!formData.email.trim()) {
       newErrors.email = "Email Address is required.";
       isValid = false;
@@ -60,7 +58,6 @@ export default function SignUpPage() {
       isValid = false;
     }
 
-    // Phone Validation (10 digits starting with 6-9)
     if (!formData.phone.trim()) {
       newErrors.phone = "Phone Number is required.";
       isValid = false;
@@ -69,8 +66,6 @@ export default function SignUpPage() {
       isValid = false;
     }
 
-    // 2. Strong Password Validation
-    // Requires: 8+ chars, 1 uppercase, 1 lowercase, 1 number, 1 special character
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
     if (!formData.password) {
       newErrors.password = "Password is required.";
@@ -80,7 +75,6 @@ export default function SignUpPage() {
       isValid = false;
     }
 
-    // Terms Validation
     if (!formData.termsAccepted) {
       newErrors.termsAccepted = "You must accept the Terms of Service.";
       isValid = false;
@@ -97,7 +91,7 @@ export default function SignUpPage() {
       return; 
     }
 
-    setIsSubmitting(true); // Disable button during redirect
+    setIsSubmitting(true); 
 
     toast.success("Account created successfully! Redirecting to login...", {
       style: {
@@ -113,7 +107,6 @@ export default function SignUpPage() {
       duration: 2000,
     });
 
-    // 3. Redirect to login page after a short delay so the user sees the toast
     setTimeout(() => {
       router.push("/login");
     }, 2000);

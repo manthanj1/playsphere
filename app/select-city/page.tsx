@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Navbar from "@/components/Navbar";
+import PageContainer from "@/components/PageContainer";
+import SectionHeader from "@/components/SectionHeader";
+import SearchInput from "@/components/SearchInput";
 import { Search, MapPin } from "lucide-react";
 
 const CITIES_DATA = [
@@ -58,45 +62,24 @@ export default function SelectCityPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f8f9ff] text-[#0b1c30] font-sans">
-      
-      {/* TopAppBar - Simplified */}
-      <header className="bg-[#f8f9ff] shadow-sm fixed top-0 w-full z-50">
-        <div className="flex justify-center md:justify-start items-center w-full px-4 md:px-12 py-4 max-w-[1280px] mx-auto">
-          <span className="font-serif text-3xl md:text-4xl italic font-black text-[#003ec7] tracking-tighter hover:text-[#0052ff] transition-colors">
-            PlaySphere
-          </span>
-        </div>
-      </header>
+      <Navbar logoAsSpan={true} />
 
-      {/* Main Content Canvas */}
-      <main className="flex-grow pt-[88px] pb-16 px-4 md:px-12 max-w-[1280px] mx-auto w-full">
-        
-        {/* Header Section */}
-        <section className="mt-8 md:mt-16 mb-12 text-center md:text-left flex flex-col items-center md:items-start">
-          <span className="inline-block px-4 py-1 rounded-full bg-[#dce9ff] text-[#434656] text-xs font-semibold mb-4 border border-[#c3c5d9] uppercase tracking-wider">
-            Select Location
-          </span>
-          <h1 className="font-serif text-4xl md:text-5xl font-extrabold text-[#0b1c30] mb-4">
-            Where are you playing today?
-          </h1>
-          <p className="text-lg text-[#434656] max-w-2xl">
-            Choose a city to explore top-tier courts, find local players, and join high-adrenaline events happening right now.
-          </p>
-          
-          {/* Search Input */}
-          <div className="mt-8 w-full max-w-md relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#737688]" />
-            <input 
-              type="text" 
+      <PageContainer className="pb-16">
+        <SectionHeader
+          title="Where are you playing today?"
+          subtitle="Choose a city to explore top-tier courts, find local players, and join high-adrenaline events happening right now."
+          actions={
+            <SearchInput
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search cities..." 
-              className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#c3c5d9] bg-white focus:outline-none focus:border-[#003ec7] focus:ring-2 focus:ring-[#b7c4ff] transition-all text-[#0b1c30] placeholder:text-[#737688]" 
+              onChange={setSearchQuery}
+              placeholder="Search cities..."
+              icon={Search}
+              className="w-full max-w-md"
             />
-          </div>
-        </section>
+          }
+          className="mt-8 md:mt-16 mb-6"
+        />
 
-        {/* Section Title */}
         <div className="mb-6 flex items-center justify-between">
           <h2 className="font-serif text-2xl font-bold text-[#0b1c30]">Main Cities</h2>
           {searchQuery && (
@@ -106,13 +89,11 @@ export default function SelectCityPage() {
           )}
         </div>
 
-        {/* Bento Grid for Cities */}
         <section className="grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-[250px]">
           {filteredCities.length > 0 ? (
             filteredCities.map((city) => (
               <Link 
                 key={city.id}
-                // Redirects to /choose-activity and passes the city ID via query parameter
                 href={`/choose-activity?city=${city.id}`} 
                 className={`${city.gridClass} relative rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(11,28,48,0.05)] hover:shadow-[0_12px_32px_rgba(11,28,48,0.12)] hover:-translate-y-1 transition-all duration-300 border border-[#d3e4fe] group block`}
               >
@@ -121,8 +102,7 @@ export default function SelectCityPage() {
                   alt={city.name} 
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
                 />
-                <div className={`absolute inset-0 bg-gradient-to-t from-[#0b1c30]/${city.isFeatured ? '90' : '80'} to-transparent flex flex-col justify-end p-${city.isFeatured ? '10' : '6'}`}>
-                  
+                <div className={`absolute inset-0 bg-gradient-to-t from-[#0b1c30]/${city.isFeatured ? '90' : '80'} to-transparent flex flex-col justify-end ${city.isFeatured ? 'p-10' : 'p-6'}`}>
                   {city.tag && (
                     city.isFeatured ? (
                       <div className="flex items-center space-x-2 mb-2">
@@ -164,8 +144,7 @@ export default function SelectCityPage() {
             </div>
           )}
         </section>
-
-      </main>
+      </PageContainer>
     </div>
   );
 }

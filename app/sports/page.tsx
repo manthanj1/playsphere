@@ -1,5 +1,8 @@
 "use client";
 
+import Navbar from "@/components/Navbar";
+import PageContainer from "@/components/PageContainer";
+import SearchInput from "@/components/SearchInput";
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -148,37 +151,19 @@ function SportsListingContent() {
 
   return (
     <div className="bg-[#f8f9ff] text-[#0b1c30] min-h-screen flex flex-col font-sans antialiased pb-20 md:pb-0">
-      
-      {/* TopAppBar */}
-      <header className="sticky w-full top-0 z-50 bg-[#f8f9ff] shadow-sm">
-        <div className="flex justify-between items-center w-full px-4 md:px-12 py-4 max-w-[1280px] mx-auto relative">
-          
-          {/* Left: Logo */}
-          <span className="text-3xl md:text-4xl italic font-black font-serif text-[#003ec7] tracking-tighter">
-            PlaySphere
-          </span>
-          
-          {/* Center: Selected City */}
-          <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-1.5 px-4 py-1.5 bg-[#e5eeff] text-[#003ec7] rounded-full border border-[#d3e4fe] shadow-sm">
-            <MapPin className="w-4 h-4" />
-            <span className="text-sm font-semibold tracking-wide">
-              {cityName}
-            </span>
-          </div>
 
-          {/* Right: Profile Icon */}
-          <Link 
-            href="/profile" 
-            className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-[#003ec7] bg-[#e5eeff] transition-colors shadow-sm hover:scale-105 active:scale-95"
-          >
-            <User className="w-5 h-5 text-[#003ec7]" />
-          </Link>
-        </div>
-      </header>
+    <Navbar 
+      centerContent={
+      <div className="flex items-center gap-1.5 px-4 py-1.5 bg-[#e5eeff] text-[#003ec7] rounded-full border border-[#d3e4fe] shadow-sm">
+      <MapPin className="w-4 h-4" />
+      <span className="text-sm font-semibold tracking-wide">
+        {cityName}
+      </span>
+      </div>
+    }
+    />
 
-      <main className="flex-grow w-full max-w-[1280px] mx-auto px-4 md:px-12 py-6 md:py-8">
-        
-        {/* Navigation & Title */}
+      <PageContainer className="py-6 md:py-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
             <Link 
@@ -193,19 +178,13 @@ function SportsListingContent() {
             </h1>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative w-full md:w-80">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-[#737688]" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-2.5 border border-[#c3c5d9] rounded-xl leading-5 bg-white placeholder-[#737688] focus:outline-none focus:ring-2 focus:ring-[#003ec7] focus:border-[#003ec7] sm:text-sm transition-all"
-              placeholder={`Search ${cityName} turfs...`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder={`Search ${cityName} turfs...`}
+            icon={Search}
+            className="w-full md:w-80"
+          />
         </div>
 
         {/* Categories / Filters */}
@@ -307,7 +286,7 @@ function SportsListingContent() {
             </button>
           </div>
         )}
-      </main>
+      </PageContainer>
     </div>
   );
 }
