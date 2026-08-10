@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   MapPin,
@@ -161,11 +161,10 @@ function NetCard({ net, status, onClick }: NetCardProps) {
 
 export default function NetSelectionPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   // ── Demo override: append ?rain=1 to the URL to simulate rainy weather ───────
   // e.g. http://localhost:3000/net-selection?rain=1
-  const demoRain = searchParams.get("rain") === "1";
+  const demoRain = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("rain") === "1" : false;
 
   const [booking, setBooking] = useState<BookingSummary | null>(null);
   const [nets, setNets] = useState<NetData[]>([]);
