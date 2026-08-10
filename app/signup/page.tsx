@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { User, Mail, Phone, Lock, X, AlertCircle, Eye, EyeOff } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
+import Cookies from 'js-cookie';
+
 export default function SignUpPage() {
   const router = useRouter(); 
 
@@ -84,7 +86,8 @@ export default function SignUpPage() {
     return isValid;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // UPDATED: Async handleSubmit for Custom Backend Auth
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -93,23 +96,58 @@ export default function SignUpPage() {
 
     setIsSubmitting(true); 
 
-    toast.success("Account created successfully! Redirecting to login...", {
-      style: {
-        border: '1px solid #c3c5d9',
-        padding: '16px',
-        color: '#0b1c30',
-        background: '#ffffff',
-      },
-      iconTheme: {
-        primary: '#003ec7',
-        secondary: '#ffffff',
-      },
-      duration: 2000,
-    });
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          name: formData.fullName,
+          phone: formData.phone,
+        }),
+      });
 
-    setTimeout(() => {
-      router.push("/login");
-    }, 2000);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create account');
+      }
+
+      // Save token to cookie
+      Cookies.set('token', data.token, { expires: 7 });
+      
+      // Save user to local storage for UI state
+      localStorage.setItem('playSphereUser', JSON.stringify(data.user));
+
+      // Handle Success
+      toast.success("Account created successfully! Redirecting...", {
+        style: {
+          border: '1px solid #c3c5d9',
+          padding: '16px',
+          color: '#0b1c30',
+          background: '#ffffff',
+        },
+        iconTheme: {
+          primary: '#003ec7',
+          secondary: '#ffffff',
+        },
+        duration: 2000,
+      });
+
+      setTimeout(() => {
+        router.push("/login");
+      }, 2000);
+
+    } catch (error: any) {
+      console.error("Sign-up Error:", error);
+      
+      toast.error(error.message || "Failed to create account. Please try again.", {
+        style: { border: '1px solid #ff4b4b', padding: '16px', color: '#0b1c30', background: '#ffffff' },
+      });
+      
+      setIsSubmitting(false);
+    }
   };
 
   return (

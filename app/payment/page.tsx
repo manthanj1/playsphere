@@ -1,39 +1,212 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  ArrowLeft, 
-  CreditCard, 
-  Smartphone, 
-  Building, 
+import Script from "next/script";
+import {
+  ArrowLeft,
   ShieldCheck,
   ChevronRight,
-  CheckCircle2
 } from "lucide-react";
+import { getCurrentBooking, saveConfirmedBooking, clearCurrentBooking, BookingSummary } from "@/lib/booking";
+import { fetchJson, fetchWithAuth } from "@/lib/api";
 
 export default function PaymentPage() {
   const router = useRouter();
-  const [selectedMethod, setSelectedMethod] = useState("upi");
+  const [booking, setBooking] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock booking data passed from the previous screen
-  const bookingSummary = {
-    turfName: "Spartan Box Cricket",
-    date: "Thu, 30 Jul 2026",
-    time: "19:00 - 21:00",
-    price: 2400,
-    platformFee: 40,
-    total: 2440
+  useEffect(() => {
+    const current = getCurrentBooking();
+    if (!current) {
+      setError("No booking found. Please select a turf or event first.");
+      return;
+    }
+    setBooking(current);
+  }, []);
+
+  // Razorpay script loaded via next/script in render
+
+  const handlePay = async () => {
+    if (!booking) return;
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      let bookingPayload: any = {};
+      if (booking.type === "turf" && booking.netId) {
+        bookingPayload = {
+          type: "turf",
+          turfId: booking.itemId,
+          netId: booking.netId,
+          areaType: booking.areaType,
+          bookingDate: booking.bookingDate,
+          timeslots: booking.slots,
+          amount: booking.amount,
+          platformFee: booking.platformFee,
+          total: booking.total,
+        };
+      } else {
+        bookingPayload = {
+          type: "event",
+          eventId: booking.itemId,
+          bookingDate: booking.bookingDate || booking.date,
+          amount: booking.amount,
+          platformFee: booking.platformFee,
+          total: booking.total,
+        };
+      }
+
+      const createRes = await fetchWithAuth("/api/payment/create-order", {
+        method: "POST",
+        body: JSON.stringify({ amount: booking.total }),
+      });
+
+      if (!createRes?.order?.id) {
+        setError("Unable to initialize payment gateway.");
+        setIsSubmitting(false);
+        return;
+      }
+
+        const storedUser = localStorage.getItem("playSphereUser");
+        const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+
+        const options = {
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_dummykey123",
+          amount: createRes.order.amount,
+          currency: "INR",
+          name: "PlaySphere",
+          description: `Booking for ${booking.itemName}`,
+          order_id: createRes.order.id,
+          handler: async function (response: any) {
+            try {
+              const verifyRes = await fetchWithAuth("/api/payment/verify", {
+                method: "POST",
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                })
+              });
+  
+              if (verifyRes?.success) {
+                const bookingRes = await fetchWithAuth("/api/bookings", {
+                  method: "POST",
+                  body: JSON.stringify(bookingPayload),
+                });
+  
+                if (!bookingRes?.booking) {
+                  setError("Payment successful but booking failed. Please contact support.");
+                  setIsSubmitting(false);
+                  return;
+                }
+  
+                const b = bookingRes.booking;
+                let confirmed: BookingSummary;
+                if (b.type === 'turf') {
+                  confirmed = {
+                    bookingId: b.id,
+                    type: "turf",
+                    itemId: String(b.turfId),
+                    itemName: b.turf?.name ?? booking.itemName,
+                    sportOrCategory: b.turf?.sport ?? booking.sportOrCategory,
+                    city: b.turf?.city ?? booking.city,
+                    date: booking.date,
+                    bookingDate: booking.bookingDate,
+                    slots: (b.slots ?? []).map((s: any) => s.timeslot),
+                    amount: b.amount,
+                    platformFee: b.platformFee,
+                    total: b.total,
+                    location: booking.location,
+                    netId: b.netId,
+                    netName: b.net?.name ?? booking.netName,
+                    areaType: b.areaType ?? booking.areaType,
+                    createdAt: b.createdAt,
+                  };
+                } else {
+                  confirmed = {
+                    bookingId: b.id,
+                    type: "event",
+                    itemId: String(b.eventId),
+                    itemName: booking.itemName,
+                    sportOrCategory: booking.sportOrCategory || "Event",
+                    city: booking.city || "",
+                    date: booking.date,
+                    slots: [],
+                    amount: b.amount,
+                    platformFee: b.platformFee,
+                    total: b.total,
+                    location: booking.location,
+                    createdAt: b.createdAt,
+                  };
+                }
+  
+                saveConfirmedBooking(confirmed);
+                clearCurrentBooking();
+                router.push("/booking-success");
+              } else {
+                setError("Payment verification failed.");
+                setIsSubmitting(false);
+              }
+            } catch (err: any) {
+              setError(err.message || "Something went wrong during payment verification.");
+              setIsSubmitting(false);
+            }
+          },
+          prefill: {
+            name: parsedUser?.name || "Guest",
+            email: parsedUser?.email || "",
+          },
+        theme: {
+          color: "#003ec7"
+        },
+        modal: {
+          ondismiss: function() {
+            setIsSubmitting(false);
+          }
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on("payment.failed", function (response: any) {
+        setError(response.error.description || "Payment failed");
+        setIsSubmitting(false);
+      });
+      rzp.open();
+    } catch (err: any) {
+      if (err.message?.toLowerCase().includes("no longer available") ||
+          err.message?.toLowerCase().includes("slot")) {
+        setError("This slot is no longer available — another user just booked it. Please go back and choose a different net or time.");
+      } else {
+        setError(err.message || "Payment initialization failed. Please try again.");
+      }
+      setIsSubmitting(false);
+    }
   };
+
+  if (!booking) {
+    return (
+      <div className="bg-[#f8f9ff] min-h-screen text-[#0b1c30] font-sans antialiased flex items-center justify-center p-6">
+        <div className="bg-white rounded-3xl p-8 border border-[#e5eeff] shadow-[0_12px_32px_rgba(11,28,48,0.08)] text-center max-w-md w-full">
+          <p className="text-lg font-semibold text-[#434656] mb-4">No active booking was found.</p>
+          <button
+            onClick={() => router.push("/choose-activity")}
+            className="inline-flex items-center gap-2 bg-[#003ec7] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#002f96] transition-colors"
+          >
+            Choose a turf or event
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#f8f9ff] min-h-screen text-[#0b1c30] font-sans antialiased pb-10">
-      
-      {/* Minimal Header */}
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <header className="bg-white border-b border-[#e5eeff] sticky top-0 z-50">
         <div className="max-w-[800px] mx-auto px-4 py-4 flex items-center justify-between">
-          <button 
+          <button
             onClick={() => router.back()}
             className="p-2 hover:bg-[#f8f9ff] rounded-full transition-colors -ml-2"
           >
@@ -46,170 +219,53 @@ export default function PaymentPage() {
         </div>
       </header>
 
-      <main className="max-w-[800px] mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-        
-        {/* Left Column: Payment Methods */}
-        <div className="md:col-span-2 space-y-6">
-          
-          <h2 className="text-xl font-extrabold text-[#0b1c30]">Payment Method</h2>
-
-          {/* UPI Section */}
-          <div 
-            onClick={() => setSelectedMethod("upi")}
-            className={`p-5 rounded-2xl border-2 transition-all cursor-pointer ${
-              selectedMethod === "upi" 
-              ? "border-[#003ec7] bg-[#f0f5ff] shadow-sm" 
-              : "border-[#e5eeff] bg-white hover:border-[#c3c5d9]"
-            }`}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#e5eeff] rounded-full flex items-center justify-center text-[#003ec7]">
-                  <Smartphone className="w-5 h-5" />
-                </div>
-                <span className="font-bold text-lg text-[#0b1c30]">UPI</span>
-              </div>
-              {selectedMethod === "upi" && <CheckCircle2 className="w-6 h-6 text-[#003ec7]" />}
-            </div>
-            
-            {selectedMethod === "upi" && (
-              <div className="pl-14 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="grid grid-cols-3 gap-3">
-                  {/* Mock UPI Apps */}
-                  <div className="border border-[#c3c5d9] rounded-xl p-3 flex flex-col items-center justify-center gap-2 hover:bg-white hover:border-[#003ec7] transition-colors cursor-pointer bg-white/50">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700 text-xs">GPay</div>
-                    <span className="text-xs font-semibold">Google Pay</span>
-                  </div>
-                  <div className="border border-[#c3c5d9] rounded-xl p-3 flex flex-col items-center justify-center gap-2 hover:bg-white hover:border-[#003ec7] transition-colors cursor-pointer bg-white/50">
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700 text-xs">PhPe</div>
-                    <span className="text-xs font-semibold">PhonePe</span>
-                  </div>
-                  <div className="border border-[#c3c5d9] rounded-xl p-3 flex flex-col items-center justify-center gap-2 hover:bg-white hover:border-[#003ec7] transition-colors cursor-pointer bg-white/50">
-                    <div className="w-8 h-8 rounded-full bg-cyan-100 flex items-center justify-center font-bold text-cyan-700 text-xs">Paytm</div>
-                    <span className="text-xs font-semibold">Paytm</span>
-                  </div>
-                </div>
-                <div className="mt-4 relative">
-                  <span className="text-xs text-[#737688] font-semibold uppercase absolute -top-2 left-3 bg-[#f0f5ff] px-1">Or enter UPI ID</span>
-                  <input 
-                    type="text" 
-                    placeholder="example@okaxis" 
-                    className="w-full border border-[#c3c5d9] bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#003ec7] focus:border-transparent"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Credit/Debit Card Section */}
-          <div 
-            onClick={() => setSelectedMethod("card")}
-            className={`p-5 rounded-2xl border-2 transition-all cursor-pointer ${
-              selectedMethod === "card" 
-              ? "border-[#003ec7] bg-[#f0f5ff] shadow-sm" 
-              : "border-[#e5eeff] bg-white hover:border-[#c3c5d9]"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#e5eeff] rounded-full flex items-center justify-center text-[#003ec7]">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <span className="font-bold text-lg text-[#0b1c30]">Credit / Debit Card</span>
-              </div>
-              {selectedMethod === "card" && <CheckCircle2 className="w-6 h-6 text-[#003ec7]" />}
-            </div>
-
-            {selectedMethod === "card" && (
-              <div className="pl-14 mt-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                <input 
-                  type="text" 
-                  placeholder="Card Number" 
-                  className="w-full border border-[#c3c5d9] bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#003ec7]"
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <input 
-                    type="text" 
-                    placeholder="MM/YY" 
-                    className="w-full border border-[#c3c5d9] bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#003ec7]"
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="CVV" 
-                    className="w-full border border-[#c3c5d9] bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#003ec7]"
-                  />
-                </div>
-                <input 
-                  type="text" 
-                  placeholder="Name on Card" 
-                  className="w-full border border-[#c3c5d9] bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#003ec7]"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Net Banking Section */}
-          <div 
-            onClick={() => setSelectedMethod("netbanking")}
-            className={`p-5 rounded-2xl border-2 transition-all cursor-pointer ${
-              selectedMethod === "netbanking" 
-              ? "border-[#003ec7] bg-[#f0f5ff] shadow-sm" 
-              : "border-[#e5eeff] bg-white hover:border-[#c3c5d9]"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#e5eeff] rounded-full flex items-center justify-center text-[#003ec7]">
-                  <Building className="w-5 h-5" />
-                </div>
-                <span className="font-bold text-lg text-[#0b1c30]">Net Banking</span>
-              </div>
-              {selectedMethod === "netbanking" && <CheckCircle2 className="w-6 h-6 text-[#003ec7]" />}
-            </div>
-          </div>
-
-        </div>
-
-        {/* Right Column: Order Summary & Pay Button */}
-        <div className="md:col-span-1">
-          <div className="bg-white border border-[#e5eeff] rounded-2xl p-6 sticky top-24 shadow-[0_12px_32px_rgba(11,28,48,0.04)]">
+      <main className="max-w-[500px] mx-auto px-4 py-8">
+        <div className="bg-white border border-[#e5eeff] rounded-3xl p-6 shadow-[0_12px_32px_rgba(11,28,48,0.06)]">
             <h3 className="font-bold text-[#0b1c30] text-lg mb-4">Order Summary</h3>
-            
+
             <div className="mb-4 pb-4 border-b border-[#e5eeff]">
-              <p className="font-bold text-[#0b1c30]">{bookingSummary.turfName}</p>
-              <p className="text-sm text-[#434656] mt-1">{bookingSummary.date} | {bookingSummary.time}</p>
+              <p className="font-bold text-[#0b1c30]">{booking.itemName}</p>
+              <p className="text-sm text-[#434656] mt-1">
+                {booking.date}{booking.slots?.length > 0 ? ` | ${booking.slots.join(", ")}` : booking.tierName}
+              </p>
+              {booking.netName && (
+                <div className="inline-flex items-center gap-1.5 mt-2 bg-[#e5eeff] text-[#003ec7] text-xs font-semibold px-2.5 py-1 rounded-full">
+                  {booking.areaType === "INDOOR" ? "🏠" : "☀️"} {booking.netName} — {booking.areaType === "INDOOR" ? "Indoor" : "Outdoor"}
+                </div>
+              )}
             </div>
 
             <div className="space-y-3 mb-6">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-[#434656]">Booking Amount</span>
-                <span className="font-semibold text-[#0b1c30]">₹{bookingSummary.price}</span>
+                <span className="font-semibold text-[#0b1c30]">₹{booking.amount}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-[#434656]">Platform Fee</span>
-                <span className="font-semibold text-[#0b1c30]">₹{bookingSummary.platformFee}</span>
+                <span className="font-semibold text-[#0b1c30]">₹{booking.platformFee}</span>
               </div>
             </div>
 
             <div className="flex justify-between items-center mb-6 pt-4 border-t border-[#c3c5d9]">
               <span className="font-extrabold text-[#0b1c30] text-lg">Total</span>
-              <span className="font-black text-2xl text-[#003ec7]">₹{bookingSummary.total}</span>
+              <span className="font-black text-2xl text-[#003ec7]">₹{booking.total}</span>
             </div>
 
-            {/* This link acts as our mockup "Pay" action, routing to the success page */}
-            <Link 
-              href="/booking-success"
+            {error && <p className="text-sm text-[#e11d48] mb-4">{error}</p>}
+
+            <button
+              onClick={handlePay}
+              disabled={isSubmitting}
               className="w-full bg-[#003ec7] text-white flex justify-between items-center px-6 py-4 rounded-xl font-bold hover:bg-[#002f96] hover:shadow-lg transition-all"
             >
-              <span>Pay ₹{bookingSummary.total}</span>
+              <span>{isSubmitting ? "Processing..." : `Pay ₹${booking.total}`}</span>
               <ChevronRight className="w-5 h-5" />
-            </Link>
+            </button>
 
             <p className="text-center text-xs text-[#737688] mt-4 flex items-center justify-center gap-1">
               <ShieldCheck className="w-4 h-4" /> 100% Secure Payment
             </p>
           </div>
-        </div>
       </main>
     </div>
   );

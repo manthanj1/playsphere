@@ -1,0 +1,186 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Lock, AlertCircle, Eye, EyeOff } from "lucide-react";
+import toast, { Toaster } from "react-hot-toast";
+
+export default function ResetPasswordPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const token = searchParams.get("token") || "";
+  const email = searchParams.get("email") || "";
+
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (!token || !email) {
+      toast.error("Invalid or missing reset token.");
+    }
+  }, [token, email]);
+
+  const validateForm = () => {
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+    if (!password) {
+      setError("Password is required.");
+      return false;
+    } else if (!passwordRegex.test(password)) {
+      setError("Must contain 8+ chars, 1 uppercase, 1 lowercase, 1 number, and 1 special char.");
+      return false;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!token || !email) {
+      setError("Invalid or missing reset token.");
+      return;
+    }
+
+    if (!validateForm()) return; 
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token, newPassword: password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reset password');
+      }
+
+      toast.success("Password has been reset successfully!", {
+        style: {
+          border: '1px solid #c3c5d9',
+          padding: '16px',
+          color: '#0b1c30',
+          background: '#ffffff',
+        },
+        iconTheme: {
+          primary: '#003ec7',
+          secondary: '#ffffff',
+        },
+        duration: 3000,
+      });
+
+      // Redirect back to login
+      setTimeout(() => {
+        router.push("/login");
+      }, 3000);
+    } catch (error: any) {
+      console.error("Reset Password Error:", error);
+      toast.error(error.message || "Failed to reset password.", {
+        style: { border: '1px solid #ff4b4b', padding: '16px', color: '#0b1c30', background: '#ffffff' },
+      });
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 md:p-12 font-sans bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: "url('https://images.unsplash.com/photo-1543326727-cf6c39e8f84c?q=80&w=2070')" }}
+    >
+      <div className="absolute inset-0 bg-[#0b1c30]/50 backdrop-blur-sm"></div>
+      <Toaster position="top-center" reverseOrder={false} />
+
+      <main className="w-full max-w-[480px] bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 p-8 relative z-10">
+        
+        <div className="mb-8">
+          <h1 className="font-extrabold text-3xl text-[#0b1c30] tracking-tight mb-2">
+            Set New Password
+          </h1>
+          <p className="text-base text-[#434656]">
+            Please enter your new password below.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} noValidate className="space-y-6">
+          
+          {/* New Password */}
+          <div>
+            <label className="block text-xs font-medium text-[#434656] mb-1" htmlFor="password">
+              New Password
+            </label>
+            <div className="relative">
+              <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${error ? "text-red-500" : "text-[#737688]"}`} />
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                placeholder="••••••••"
+                className={`w-full pl-10 pr-12 py-3 bg-white border rounded-lg text-base text-[#0b1c30] placeholder:text-[#737688] focus:outline-none transition-colors ${
+                  error ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500" : "border-[#c3c5d9] focus:border-[#003ec7] focus:ring-1 focus:ring-[#003ec7]"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#737688] hover:text-[#0b1c30] transition-colors focus:outline-none"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label className="block text-xs font-medium text-[#434656] mb-1" htmlFor="confirmPassword">
+              Confirm New Password
+            </label>
+            <div className="relative">
+              <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${error ? "text-red-500" : "text-[#737688]"}`} />
+              <input
+                id="confirmPassword"
+                type={showPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
+                placeholder="••••••••"
+                className={`w-full pl-10 pr-12 py-3 bg-white border rounded-lg text-base text-[#0b1c30] placeholder:text-[#737688] focus:outline-none transition-colors ${
+                  error ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500" : "border-[#c3c5d9] focus:border-[#003ec7] focus:ring-1 focus:ring-[#003ec7]"
+                }`}
+              />
+            </div>
+            {error && (
+              <div className="flex items-start gap-1 mt-1.5 text-red-500 text-xs font-medium">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting || !token || !email}
+            className={`w-full text-white font-bold text-lg py-3 px-6 rounded-lg shadow-sm transition-all duration-200 ${
+              (isSubmitting || !token || !email)
+                ? "bg-[#003ec7]/70 cursor-not-allowed" 
+                : "bg-[#003ec7] hover:shadow-[0_12px_32px_rgba(11,28,48,0.12)] hover:-translate-y-0.5 cursor-pointer"
+            }`}
+          >
+            {isSubmitting ? "Resetting..." : "Reset Password"}
+          </button>
+        </form>
+      </main>
+    </div>
+  );
+}

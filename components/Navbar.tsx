@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { User } from "lucide-react";
+import NavActions from "./NavActions";
 
 interface NavbarProps {
   logoAsSpan?: boolean;
@@ -33,12 +33,7 @@ export default function Navbar({
         )}
 
         {showProfileIcon && (
-          <Link 
-            href="/profile" 
-            className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-[#003ec7] bg-[#e5eeff] transition-colors shadow-sm hover:scale-105 active:scale-95 ml-auto"
-          >
-            <User className="w-5 h-5 text-[#003ec7]" />
-          </Link>
+          <NavActions />
         )}
       </div>
     </header>

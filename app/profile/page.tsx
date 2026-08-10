@@ -19,7 +19,10 @@ import {
 
 import Navbar from "@/components/Navbar";
 import PageContainer from "@/components/PageContainer";
+import { fetchJson, fetchWithAuth, buildUrl, getAuthToken } from "@/lib/api";
+import Cookies from "js-cookie";
 import SectionHeader from "@/components/SectionHeader";
+import { getConfirmedBooking } from "@/lib/booking";
 
 // Define the shape of our user data
 interface UserProfile {
@@ -33,6 +36,33 @@ interface UserProfile {
   profilePhoto?: string;
 }
 
+interface BookingSummary {
+  bookingId?: string;
+  type: "turf" | "event";
+  itemId: string;
+  itemName: string;
+  sportOrCategory: string;
+  city: string;
+  date: string;
+  slots: string[];
+  tierId?: string;
+  tierName?: string;
+  amount: number;
+  platformFee: number;
+  total: number;
+  location: string;
+  createdAt?: string;
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join("") || "P";
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   
@@ -43,12 +73,12 @@ export default function ProfilePage() {
   // Edit mode states
   const [isEditing, setIsEditing] = useState(false);
   const [editFormData, setEditFormData] = useState<UserProfile | null>(null);
+  const [bookings, setBookings] = useState<BookingSummary[]>([]);
   
   // Ref for the hidden file input
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Fetch the logged-in user data from localStorage
     const storedUser = localStorage.getItem("playSphereUser");
 
     if (storedUser) {
@@ -59,31 +89,91 @@ export default function ProfilePage() {
           email: parsedUser.email || "player@example.com",
           phone: parsedUser.phone || "+91 XXXXX XXXXX",
           bio: parsedUser.bio || "PlaySphere Athlete",
-          location: parsedUser.city || "Gujarat, India",
+          location: parsedUser.location || parsedUser.city || "Gujarat, India",
           bookingsCount: parsedUser.bookingsCount || 0,
           tournamentsCount: parsedUser.tournamentsCount || 0,
-          profilePhoto: parsedUser.profilePhoto || "",
+          profilePhoto: parsedUser.imageUrl || parsedUser.profilePhoto || "",
         });
       } catch (error) {
         console.error("Failed to parse user data");
       }
-    } else {
-      setUserData({
-        name: "Guest User",
-        email: "guest@playsphere.com",
-        phone: "Add phone number",
-        bio: "New to the arena",
-        location: "Select a city",
-        bookingsCount: 0,
-        tournamentsCount: 0,
-        profilePhoto: "",
-      });
     }
-    
-    setIsLoading(false);
-  }, []);
 
-  const handleLogout = () => {
+    const checkAuth = async () => {
+      const token = Cookies.get("token");
+      if (!token) {
+        setIsLoading(false);
+        router.push("/login");
+        return;
+      }
+
+      const buildProfile = (backendUser: any | null) => {
+        const defaultName = backendUser?.name || "Player One";
+        return {
+          name: defaultName,
+          email: backendUser?.email || "player@example.com",
+          phone: backendUser?.phone || "+91 XXXXX XXXXX",
+          bio: backendUser?.bio || `Welcome back, ${defaultName}`,
+          location: backendUser?.location || backendUser?.city || "Gujarat, India",
+          bookingsCount: backendUser?.bookingsCount ?? 0,
+          tournamentsCount: backendUser?.tournamentsCount ?? 0,
+          profilePhoto: backendUser?.imageUrl || "",
+        };
+      };
+
+      try {
+        const response = await fetchWithAuth('/api/auth/me');
+        const backendUser = response?.user || null;
+        
+        // If we want to sync the frontend data to backend on page load:
+        const profilePayload = {
+          name: backendUser?.name || "Player One",
+          email: backendUser?.email || "",
+          phone: backendUser?.phone || "",
+          location: "Gujarat, India",
+          city: "Ahmedabad",
+          bookingsCount: backendUser?.bookingsCount || 0,
+          tournamentsCount: backendUser?.tournamentsCount || 0,
+          imageUrl: backendUser?.imageUrl || "",
+        };
+        
+        const syncResponse = await fetchWithAuth('/api/auth/sync', {
+          method: 'POST',
+          body: JSON.stringify(profilePayload),
+        });
+        
+        const updatedUser = syncResponse?.user || backendUser;
+        const profileData = buildProfile(updatedUser);
+
+        setUserData(profileData);
+        localStorage.setItem('playSphereUser', JSON.stringify(profileData));
+
+        if (updatedUser?.email) {
+          const bookingResponse = await fetchWithAuth(`/api/bookings`);
+          const userBookings = bookingResponse?.bookings ?? [];
+          setBookings(userBookings);
+        }
+      } catch (error) {
+        console.error('Failed to load backend profile', error);
+        if (error instanceof Error && error.message.includes("Unauthorized")) {
+          Cookies.remove("token");
+          localStorage.removeItem("playSphereUser");
+          router.push("/login");
+        } else {
+          const profileData = buildProfile(null);
+          setUserData(profileData);
+          localStorage.setItem('playSphereUser', JSON.stringify(profileData));
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkAuth();
+  }, [router]);
+
+  const handleLogout = async () => {
+    Cookies.remove("token");
     localStorage.removeItem("playSphereUser");
     router.push("/login");
   };
@@ -108,19 +198,42 @@ export default function ProfilePage() {
   };
 
   // Handle photo upload and preview
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && editFormData) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        setEditFormData({
-          ...editFormData,
-          profilePhoto: result
+      try {
+        const token = await getAuthToken();
+        const formData = new FormData();
+        formData.append("photo", file);
+        
+        const res = await fetch(buildUrl("/api/auth/profile-photo"), {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`
+          },
+          body: formData
         });
-      };
-      reader.readAsDataURL(file);
+        
+        const data = await res.json();
+        if (data.imageUrl) {
+          setEditFormData({
+            ...editFormData,
+            profilePhoto: data.imageUrl
+          });
+        }
+      } catch (err) {
+        console.error("Photo upload failed", err);
+      }
     }
+  };
+
+  const getProfileImageUrl = (url: string | undefined) => {
+    if (!url) return "";
+    if (url && !url.startsWith("http") && !url.startsWith("data:")) {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '') || 'http://localhost:3001';
+      return `${baseUrl}${url}`;
+    }
+    return url;
   };
 
   // Save changes to state and localStorage
@@ -173,9 +286,11 @@ export default function ProfilePage() {
                 {/* Profile Photo Area */}
                 <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white bg-[#e5eeff] shadow-md mb-4 relative flex items-center justify-center group/avatar">
                   {displayData.profilePhoto ? (
-                    <img src={displayData.profilePhoto} alt="Profile" className="w-full h-full object-cover" />
+                    <img src={getProfileImageUrl(displayData.profilePhoto)} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    <User className="w-16 h-16 text-[#003ec7]" />
+                    <div className="w-full h-full flex items-center justify-center bg-[#e5eeff] text-[#003ec7] font-bold text-3xl">
+                      {getInitials(displayData.name)}
+                    </div>
                   )}
                   
                   {isEditing && (
@@ -328,27 +443,35 @@ export default function ProfilePage() {
               />
               
               <div className="flex flex-col gap-4">
-                {/* Static Placeholder Booking Card */}
-                <div className="bg-white rounded-2xl border border-[#c3c5d9] p-0 shadow-[0_4px_20px_rgba(11,28,48,0.05)] hover:shadow-[0_12px_32px_rgba(11,28,48,0.12)] transition-shadow hover:-translate-y-1 transform duration-200 overflow-hidden flex flex-col sm:flex-row">
-                  <div className="sm:w-1/3 h-48 sm:h-auto relative bg-[#e5eeff] flex items-center justify-center">
-                    <Trophy className="w-12 h-12 text-[#003ec7] opacity-20 absolute" />
-                    <div className="absolute top-3 left-3 bg-[#003ec7] text-white text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide">
-                      Tennis
+                {bookings.length > 0 ? (
+                  bookings.map((booking, idx) => (
+                    <div key={idx} className="bg-white rounded-2xl border border-[#c3c5d9] p-0 shadow-[0_4px_20px_rgba(11,28,48,0.05)] hover:shadow-[0_12px_32px_rgba(11,28,48,0.12)] transition-shadow hover:-translate-y-1 transform duration-200 overflow-hidden flex flex-col sm:flex-row">
+                      <div className="sm:w-1/3 h-48 sm:h-auto relative bg-[#e5eeff] flex items-center justify-center">
+                        <Trophy className="w-12 h-12 text-[#003ec7] opacity-20 absolute" />
+                        <div className="absolute top-3 left-3 bg-[#003ec7] text-white text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide">
+                          {booking.type === "turf" ? booking.sportOrCategory : "Event"}
+                        </div>
+                      </div>
+                      <div className="p-6 flex-1 flex flex-col justify-between">
+                        <div>
+                          <h3 className="text-xl font-bold font-serif text-[#0b1c30] mb-1">{booking.itemName}</h3>
+                          <p className="text-[#434656] text-base flex items-center gap-1.5 mb-4">
+                            <Calendar className="w-4 h-4" /> {new Date(booking.date).toLocaleDateString()}{booking.slots?.length ? ` • ${booking.slots.join(", ")}` : ""}
+                          </p>
+                          <p className="text-sm text-[#434656]">{booking.location}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button className="bg-[#003ec7] hover:bg-[#0038b6] transition-colors text-white font-semibold text-sm py-2 px-4 rounded-lg flex-1">View</button>
+                          <button className="border border-[#737688] hover:bg-[#f8f9ff] transition-colors text-[#0b1c30] font-semibold text-sm py-2 px-4 rounded-lg">Cancel</button>
+                        </div>
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="bg-white rounded-2xl border border-[#c3c5d9] p-6 shadow-[0_4px_20px_rgba(11,28,48,0.05)] text-center">
+                    <p className="text-[#434656]">You have no upcoming bookings yet. Book a turf or event to see it here.</p>
                   </div>
-                  <div className="p-6 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-xl font-bold font-serif text-[#0b1c30] mb-1">Sardar Patel Stadium - Court 4</h3>
-                      <p className="text-[#434656] text-base flex items-center gap-1.5 mb-4">
-                        <Calendar className="w-4 h-4" /> Aug 15, 2026 • 6:00 PM - 8:00 PM
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="bg-[#003ec7] hover:bg-[#0038b6] transition-colors text-white font-semibold text-sm py-2 px-4 rounded-lg flex-1">Modify</button>
-                      <button className="border border-[#737688] hover:bg-[#f8f9ff] transition-colors text-[#0b1c30] font-semibold text-sm py-2 px-4 rounded-lg">Cancel</button>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             </section>
           </div>

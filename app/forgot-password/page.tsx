@@ -28,31 +28,51 @@ export default function ForgotPasswordPage() {
     return true;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return; 
 
     setIsSubmitting(true);
 
-    toast.success("Reset link sent! Check your inbox.", {
-      style: {
-        border: '1px solid #c3c5d9',
-        padding: '16px',
-        color: '#0b1c30',
-        background: '#ffffff',
-      },
-      iconTheme: {
-        primary: '#003ec7',
-        secondary: '#ffffff',
-      },
-      duration: 3000,
-    });
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
 
-    // Redirect back to login after sending the link
-    setTimeout(() => {
-      router.push("/login");
-    }, 3000);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to process request');
+      }
+
+      toast.success(data.message || "Reset link sent! Check your inbox.", {
+        style: {
+          border: '1px solid #c3c5d9',
+          padding: '16px',
+          color: '#0b1c30',
+          background: '#ffffff',
+        },
+        iconTheme: {
+          primary: '#003ec7',
+          secondary: '#ffffff',
+        },
+        duration: 3000,
+      });
+
+      // Redirect back to login after sending the link
+      setTimeout(() => {
+        router.push("/login");
+      }, 3000);
+    } catch (error: any) {
+      console.error("Forgot Password Error:", error);
+      toast.error(error.message || "Failed to process request.", {
+        style: { border: '1px solid #ff4b4b', padding: '16px', color: '#0b1c30', background: '#ffffff' },
+      });
+      setIsSubmitting(false);
+    }
   };
 
   return (
