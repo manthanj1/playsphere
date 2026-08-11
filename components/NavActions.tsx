@@ -68,7 +68,15 @@ export default function NavActions() {
           // Fetch bookings
           setIsLoadingBookings(true);
           const bookingRes = await paymentService.getBookings();
-          setBookings(bookingRes?.bookings || []);
+          const allBookings = bookingRes?.bookings || [];
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const upcomingBookings = allBookings.filter((b: any) => {
+            const bookingDate = new Date(b.date);
+            bookingDate.setHours(0, 0, 0, 0);
+            return bookingDate >= today;
+          });
+          setBookings(upcomingBookings);
         } catch (err) {
           console.error("Error fetching data for NavActions", err);
           if (err instanceof Error && err.message.includes("Unauthorized")) {
@@ -153,19 +161,25 @@ export default function NavActions() {
               ) : (
                 <ul className="divide-y divide-[#e5eeff]">
                   {bookings.map((b, i) => (
-                    <li key={i} className="p-3 hover:bg-[#f8f9ff] transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-semibold text-sm text-[#0b1c30] line-clamp-1">{b.itemName}</p>
-                          <div className="flex items-center gap-1 mt-1 text-xs text-[#434656]">
-                            <Calendar className="w-3 h-3" />
-                            <span>{new Date(b.date).toLocaleDateString()}</span>
+                    <li key={i} className="hover:bg-[#f8f9ff] transition-colors">
+                      <Link 
+                        href={`/booking-success?booking_id=${b.bookingId || (b as any).id}`}
+                        onClick={() => setIsBellOpen(false)}
+                        className="p-3 block"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-semibold text-sm text-[#0b1c30] line-clamp-1">{b.itemName}</p>
+                            <div className="flex items-center gap-1 mt-1 text-xs text-[#434656]">
+                              <Calendar className="w-3 h-3" />
+                              <span>{new Date(b.date).toLocaleDateString()}</span>
+                            </div>
+                            <span className="text-xs font-medium text-[#003ec7] mt-1 block">
+                              {b.type === 'turf' ? b.sportOrCategory : 'Event'}
+                            </span>
                           </div>
-                          <span className="text-xs font-medium text-[#003ec7] mt-1 block">
-                            {b.type === 'turf' ? b.sportOrCategory : 'Event'}
-                          </span>
                         </div>
-                      </div>
+                      </Link>
                     </li>
                   ))}
                 </ul>

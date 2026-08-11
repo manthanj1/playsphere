@@ -3,7 +3,7 @@
 import React from "react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
+import {
   Calendar,
   MapPin,
   Ticket,
@@ -28,7 +28,6 @@ interface EventItem {
   category: string;
   startingPrice: number;
   image?: string;
-  imageColor: string;
   hostName?: string;
 }
 
@@ -46,13 +45,6 @@ interface BackendEventItem {
 
 const categoryList = ["All", "Ahmedabad", "Surat", "Gandhinagar", "Vadodara"];
 const cityList = ["All", "Ahmedabad", "Surat", "Jamnagar", "Gandhinagar", "Vadodara"];
-const imageColors = [
-  "from-blue-500 to-indigo-700",
-  "from-fuchsia-500 to-purple-700",
-  "from-emerald-400 to-teal-600",
-  "from-rose-500 to-pink-700",
-  "from-orange-400 to-rose-600",
-];
 
 export default function EntertainmentEventsPage() {
   const [activeCategory, setActiveCategory] = useState("All");
@@ -82,8 +74,7 @@ export default function EntertainmentEventsPage() {
           }),
           location: event.city ? `${event.city} Arena` : 'Unknown location',
           startingPrice: 499 + (index % 5) * 300,
-          image: event.image || `https://images.unsplash.com/photo-1540039155732-611174bfc811?auto=format&fit=crop&q=80&w=800&h=600`,
-          imageColor: imageColors[index % imageColors.length],
+          image: event.image || `/images/placeholders/image-${8 + parseInt(event.id.split('-')[1] || "1")}.jpg?v=3`,
           hostName: event.host?.name,
         }));
 
@@ -159,16 +150,14 @@ export default function EntertainmentEventsPage() {
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
-              className={`whitespace-nowrap flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
-                activeCategory === category
+              className={`whitespace-nowrap flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${activeCategory === category
                   ? 'bg-[#0b1c30] text-white shadow-md'
                   : 'bg-white text-[#434656] border border-[#e5eeff] hover:border-[#003ec7] hover:text-[#003ec7]'
-              }`}
+                }`}
             >
               <span>{category === 'All' ? 'All Cities' : category}</span>
-              <span className={`px-2 py-0.5 rounded-full text-xs ${
-                activeCategory === category ? 'bg-white/20' : 'bg-[#f0f4ff] text-[#003ec7]'
-              }`}>
+              <span className={`px-2 py-0.5 rounded-full text-xs ${activeCategory === category ? 'bg-white/20' : 'bg-[#f0f4ff] text-[#003ec7]'
+                }`}>
                 {category === 'All' ? events.length : events.filter(e => e.city === category).length}
               </span>
             </button>

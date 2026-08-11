@@ -73,7 +73,7 @@ function ChooseActivityContent() {
                 href={`/sports?city=${cityQuery || 'default'}`}
                 title="Sports"
                 description="Find local cricket leagues, kabaddi matches, and top-tier facilities. Get on the field."
-                image="https://lh3.googleusercontent.com/aida-public/AB6AXuCGfeX0XI_wpvEB1xxJFMRJ2f-K3RKFTfO7uI91bcYsjBr4bcBHLT9y3EYSM9u0l6yDYB3arqXj1meUTnWT59643bCrQBpdml-w0pswnULSj_D5Y7q1Ey122B7AXtBz2sh1znbwuGFPRFctu670WL3vHP1tpr_AtKtYG0ddB2wyjhlGW0dLoDpJLAHQiQY5xZAcLvZTCJSQEqwiXACf6n3iU-abOn4Gw1ai2kQrh41gYPtpD-RXu3nFiA"
+                image="/images/placeholders/image-19.jpg"
                 icon={<Trophy className="text-white w-8 h-8" />}
                 buttonText="Explore Sports"
               />
@@ -82,7 +82,7 @@ function ChooseActivityContent() {
                 href={`/events?city=${cityQuery || 'default'}`}
                 title="Events"
                 description="Discover electrifying Navratri nights, community festivals, and exclusive gatherings."
-                image="https://lh3.googleusercontent.com/aida-public/AB6AXuB1lzPUeoLzAzufEiPWBN3p57DBavzejiCBfT8oTaHePcOLnZ-Gx00jm0OE8ENwF1uxAYxrFLB8L0ihvLpuC53MWl_72jxxVd24gAuZE4mLRiImYmeMpCVJ1EE5yuKofwYJcKclQeXc9kDR_7S8t3kV-o-C70QVHmiGK3Cyh0EyKvyZCa4crX2TPU8VEsPApjBJC9YEv56ktMS_XvrXal9Db_SchuwsoQp9MAQXHu4z8rgRB9BB7xcS1Q"
+                image="/images/placeholders/image-20.jpg"
                 icon={<PartyPopper className="text-white w-8 h-8" />}
                 buttonText="Explore Events"
               />

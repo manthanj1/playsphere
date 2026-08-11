@@ -46,13 +46,7 @@ const DEFAULT_TICKET_TIERS: EventTier[] = [
   { id: "standard", name: "Standard Admission", price: 499, features: ["Event entry", "Standard seating"] },
   { id: "vip", name: "VIP Experience", price: 1499, features: ["Priority entry", "VIP seating"] },
 ];
-const imageColors = [
-  "from-blue-500 to-indigo-700",
-  "from-fuchsia-500 to-purple-700",
-  "from-emerald-400 to-teal-600",
-  "from-rose-500 to-pink-700",
-  "from-orange-400 to-rose-600",
-];
+const TABS = ["About", "Tickets", "Host"];
 
 export default function EventDetailsPage() {
   const router = useRouter();
@@ -179,7 +173,7 @@ export default function EventDetailsPage() {
           <div className="lg:col-span-7 space-y-6">
             <div className="w-full h-64 md:h-80 rounded-3xl overflow-hidden shadow-md">
               <img 
-                src={event.image || `https://images.unsplash.com/photo-1540039155732-611174bfc811?auto=format&fit=crop&q=80&w=1200&h=800`} 
+                src={event.image || `/images/placeholders/image-${8 + parseInt(event.id.split('-')[1] || "1")}.jpg?v=3`} 
                 alt={event.title}
                 className="w-full h-full object-cover"
               />

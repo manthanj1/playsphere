@@ -160,10 +160,7 @@ export default function SportsListingPage() {
                     alt={turf.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-md text-xs font-bold text-[#0b1c30] flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 fill-[#a94900] text-[#a94900]" />
-                    {turf.rating} <span className="text-[#737688] font-medium">({turf.reviews})</span>
-                  </div>
+
                   <div className="absolute top-3 right-3 bg-[#003ec7] text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide shadow-sm">
                     {turf.sport}
                   </div>

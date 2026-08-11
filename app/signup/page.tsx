@@ -130,7 +130,7 @@ export default function SignUpPage() {
   return (
     <div 
       className="min-h-screen flex items-center justify-center p-4 md:p-12 font-sans bg-cover bg-center bg-no-repeat relative"
-      style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDLeaaohOQitQdYpGB_pMF3w5uVDxCakxtdkmJSupwPHZ-hXctZRKoyEsMDtumnt5VFJWuwH8OF5Qksn83xt3xnTRB4Utq3993lfKTLhD9HAB_Tvi_w4x6mfDDffCDeMnDmRNU30HE4ShvHFRnhbtT3jf5Nt_AgIjmQAAi-3aXgigQTWac3jtNA6Ug7jZiwGIB9B9gqu60aavgUbm3sfkyEGMhSYHIkfFHN1-XGRFd8Y9Z9ZJdmdDhfYw')" }}
+      style={{ backgroundImage: "url('/images/placeholders/auth-bg.jpg')" }}
     >
       <div className="absolute inset-0 bg-[#0b1c30]/50 backdrop-blur-sm"></div>
 

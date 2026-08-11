@@ -56,7 +56,7 @@ export default function ForgotPasswordPage() {
   return (
     <div 
       className="min-h-screen flex items-center justify-center p-4 md:p-12 font-sans bg-cover bg-center bg-no-repeat relative"
-      style={{ backgroundImage: "url('https://images.unsplash.com/photo-1543326727-cf6c39e8f84c?q=80&w=2070')" }}
+      style={{ backgroundImage: "url('/images/placeholders/auth-bg.jpg')" }}
     >
       <div className="absolute inset-0 bg-[#0b1c30]/50 backdrop-blur-sm"></div>
       <Toaster position="top-center" reverseOrder={false} />

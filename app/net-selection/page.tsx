@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -14,29 +14,50 @@ import {
   ChevronRight,
   Home,
   Sun,
+  ChevronDown,
 } from "lucide-react";
 import { getCurrentBooking, saveCurrentBooking, BookingSummary } from "@/lib/booking";
 import { turfService, NetData, NetsApiResponse } from "@/services/turfService";
 import Navbar from "@/components/Navbar";
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const ALL_TIME_SLOTS = [
+  "06:00 - 07:00",
+  "07:00 - 08:00",
+  "08:00 - 09:00",
+  "09:00 - 10:00",
+  "10:00 - 11:00",
+  "11:00 - 12:00",
+  "12:00 - 13:00",
+  "13:00 - 14:00",
+  "14:00 - 15:00",
+  "15:00 - 16:00",
+  "16:00 - 17:00",
+  "17:00 - 18:00",
+  "18:00 - 19:00",
+  "19:00 - 20:00",
+  "20:00 - 21:00",
+  "21:00 - 22:00",
+  "22:00 - 23:00",
+  "23:00 - 00:00",
+];
+
 type NetStatus = "available" | "selected" | "rain-disabled" | "already-booked";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getNetStatus(
   net: NetData,
-  selectedNetIds: string[],
-  isRainy: boolean,
-  userSlots: string[]
+  selectedNetId: string | null,
+  isRainy: boolean
 ): NetStatus {
-  if (selectedNetIds.includes(net.id)) return "selected";
+  if (net.id === selectedNetId) return "selected";
   if (net.areaType === "OUTDOOR" && isRainy) return "rain-disabled";
-  const hasConflict = userSlots.some((s) => net.bookedSlots.includes(s));
-  if (hasConflict) return "already-booked";
   return "available";
 }
 
-// ─── Skeleton loader ─────────────────────────────────────────────────────────
+// ─── Skeleton Loader ──────────────────────────────────────────────────────────
 
 function NetCardSkeleton() {
   return (
@@ -57,7 +78,7 @@ interface NetCardProps {
 }
 
 function NetCard({ net, status, onClick }: NetCardProps) {
-  const isDisabled = status === "rain-disabled" || status === "already-booked";
+  const isDisabled = status === "rain-disabled";
   const isSelected = status === "selected";
 
   const cardClass = [
@@ -66,20 +87,18 @@ function NetCard({ net, status, onClick }: NetCardProps) {
       ? "border-[#003ec7] bg-[#003ec7] text-white shadow-lg shadow-[#003ec7]/25 scale-[1.02]"
       : status === "rain-disabled"
       ? "border-[#dde3f0] bg-[#f4f6fb] text-[#aab0c8] cursor-not-allowed"
-      : status === "already-booked"
-      ? "border-[#f0dede] bg-[#fdf6f6] text-[#c4a4a4] cursor-not-allowed"
       : "border-[#e5eeff] bg-white text-[#0b1c30] hover:border-[#003ec7] hover:shadow-md cursor-pointer",
   ].join(" ");
 
   const iconBgClass = isSelected
     ? "bg-white/20"
-    : status === "rain-disabled" || status === "already-booked"
+    : status === "rain-disabled"
     ? "bg-[#eaecf5]"
     : "bg-[#e5eeff]";
 
   const iconColorClass = isSelected
     ? "text-white"
-    : status === "rain-disabled" || status === "already-booked"
+    : status === "rain-disabled"
     ? "text-[#b0b8d4]"
     : "text-[#003ec7]";
 
@@ -98,8 +117,6 @@ function NetCard({ net, status, onClick }: NetCardProps) {
           <Check className={`w-5 h-5 ${iconColorClass}`} />
         ) : status === "rain-disabled" ? (
           <CloudRain className={`w-5 h-5 ${iconColorClass}`} />
-        ) : status === "already-booked" ? (
-          <Ban className={`w-5 h-5 ${iconColorClass}`} />
         ) : net.areaType === "INDOOR" ? (
           <Home className={`w-5 h-5 ${iconColorClass}`} />
         ) : (
@@ -112,21 +129,12 @@ function NetCard({ net, status, onClick }: NetCardProps) {
         <p className={`font-bold text-base leading-tight ${isSelected ? "text-white" : ""}`}>
           {net.name}
         </p>
-        <p
-          className={`text-xs font-medium mt-0.5 ${
-            isSelected ? "text-blue-100" : "text-[#737688]"
-          }`}
-        >
+        <p className={`text-xs font-medium mt-0.5 ${isSelected ? "text-blue-100" : "text-[#737688]"}`}>
           {net.areaType === "INDOOR" ? "Indoor" : "Outdoor"}
         </p>
       </div>
 
-      {/* Status badge */}
-      {status === "already-booked" && (
-        <span className="absolute top-3 right-3 bg-[#fee2e2] text-[#b91c1c] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-          Booked
-        </span>
-      )}
+      {/* Status badges */}
       {status === "rain-disabled" && (
         <span className="absolute top-3 right-3 bg-[#e0e7f5] text-[#6b7faa] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
           Blocked
@@ -141,25 +149,65 @@ function NetCard({ net, status, onClick }: NetCardProps) {
   );
 }
 
+// ─── Slot Button ──────────────────────────────────────────────────────────────
+
+interface SlotButtonProps {
+  slot: string;
+  isSelected: boolean;
+  isBooked: boolean;
+  onClick: () => void;
+}
+
+function SlotButton({ slot, isSelected, isBooked, onClick }: SlotButtonProps) {
+  if (isBooked) {
+    return (
+      <div className="relative py-2.5 px-2 text-sm font-semibold rounded-lg border bg-[#fdf6f6] border-[#f0dede] text-[#c4a4a4] cursor-not-allowed flex items-center justify-center">
+        {slot}
+        <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#fee2e2] text-[#b91c1c] text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide whitespace-nowrap">
+          Booked
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      className={`py-2.5 px-2 text-sm font-semibold rounded-lg border transition-all ${
+        isSelected
+          ? "bg-[#e5eeff] border-[#003ec7] text-[#003ec7] shadow-sm"
+          : "bg-white border-[#c3c5d9] text-[#434656] hover:border-[#003ec7] hover:text-[#003ec7]"
+      }`}
+    >
+      {slot}
+    </button>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NetSelectionPage() {
   const router = useRouter();
+  const slotPanelRef = useRef<HTMLDivElement>(null);
 
-  // ── Demo override: append ?rain=1 to the URL to simulate rainy weather ───────
-  // e.g. http://localhost:3000/net-selection?rain=1
-  const demoRain = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("rain") === "1" : false;
+  const demoRain =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("rain") === "1"
+      : false;
 
   const [booking, setBooking] = useState<BookingSummary | null>(null);
   const [nets, setNets] = useState<NetData[]>([]);
   const [isRainy, setIsRainy] = useState(false);
   const [temperature, setTemperature] = useState<number | null>(null);
-  const [selectedNetIds, setSelectedNetIds] = useState<string[]>([]);
   const [loadingNets, setLoadingNets] = useState(true);
   const [netError, setNetError] = useState<string | null>(null);
+
+  // Step state machine: "pick_net" → "pick_slots"
+  const [step, setStep] = useState<"pick_net" | "pick_slots">("pick_net");
+  const [selectedNetId, setSelectedNetId] = useState<string | null>(null);
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
-  // Merge live API weather with the optional demo override
   const effectiveIsRainy = isRainy || demoRain;
 
   // ── Load booking from localStorage ──────────────────────────────────────────
@@ -176,14 +224,14 @@ export default function NetSelectionPage() {
   useEffect(() => {
     if (!booking) return;
 
-    const turfId = booking.itemId;
-    const date = booking.bookingDate ?? "";
-
     async function loadNets() {
       setLoadingNets(true);
       setNetError(null);
       try {
-        const data: NetsApiResponse = await turfService.getTurfNets(turfId, date);
+        const data: NetsApiResponse = await turfService.getTurfNets(
+          booking!.itemId,
+          booking!.bookingDate ?? ""
+        );
         setNets(data.nets ?? []);
         setIsRainy(data.isRainy ?? false);
         setTemperature(data.temperature ?? null);
@@ -197,69 +245,95 @@ export default function NetSelectionPage() {
     loadNets();
   }, [booking]);
 
-  // ── Deselect outdoor nets if it turns rainy ──────────────────────────────────
+  // ── When rainy, deselect any outdoor net and reset to net-picking step ───────
   useEffect(() => {
-    if (!effectiveIsRainy || selectedNetIds.length === 0) return;
-    const outdoorsSelected = nets.some(n => selectedNetIds.includes(n.id) && n.areaType === "OUTDOOR");
-    if (outdoorsSelected) {
-      setSelectedNetIds(prev => prev.filter(id => {
-         const n = nets.find(net => net.id === id);
-         return n?.areaType !== "OUTDOOR";
-      }));
+    if (!effectiveIsRainy || !selectedNetId) return;
+    const selected = nets.find((n) => n.id === selectedNetId);
+    if (selected?.areaType === "OUTDOOR") {
+      setSelectedNetId(null);
+      setSelectedSlots([]);
+      setStep("pick_net");
     }
-  }, [effectiveIsRainy, nets, selectedNetIds]);
+  }, [effectiveIsRainy, nets, selectedNetId]);
+
+  // ── Scroll slot panel into view when it appears ──────────────────────────────
+  useEffect(() => {
+    if (step === "pick_slots" && slotPanelRef.current) {
+      setTimeout(() => {
+        slotPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [step]);
+
+  const handleNetClick = (net: NetData) => {
+    if (net.id === selectedNetId) {
+      // Deselect — go back to net picking step
+      setSelectedNetId(null);
+      setSelectedSlots([]);
+      setStep("pick_net");
+      return;
+    }
+    setSelectedNetId(net.id);
+    setSelectedSlots([]);
+    setStep("pick_slots");
+    setBookingError(null);
+  };
+
+  const toggleSlot = (slot: string) => {
+    setSelectedSlots((prev) =>
+      prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot]
+    );
+  };
 
   const handleProceed = () => {
-    if (!booking || selectedNetIds.length === 0) return;
-    
-    const selectedNets = nets.filter((n) => selectedNetIds.includes(n.id));
-    if (selectedNets.length === 0) return;
+    if (!booking || !selectedNetId || selectedSlots.length === 0) return;
+
+    const selectedNet = nets.find((n) => n.id === selectedNetId);
+    if (!selectedNet) return;
 
     setBookingError(null);
 
-    // If outdoor net and it just became rainy, block silently
-    if (selectedNets.some(n => n.areaType === "OUTDOOR") && effectiveIsRainy) {
-      setBookingError("Outdoor nets are blocked due to rainy conditions. Please choose indoor nets only.");
+    if (selectedNet.areaType === "OUTDOOR" && effectiveIsRainy) {
+      setBookingError(
+        "Outdoor nets are blocked due to rainy conditions. Please choose an indoor net."
+      );
       return;
     }
-    
-    // Determine mixed area type
-    const hasIndoor = selectedNets.some(n => n.areaType === "INDOOR");
-    const hasOutdoor = selectedNets.some(n => n.areaType === "OUTDOOR");
-    const areaType = hasIndoor && hasOutdoor ? "MIXED" : hasIndoor ? "INDOOR" : "OUTDOOR";
-    
-    // Original turf booking amount is for a single net. Multiple nets multiply the cost.
-    const multiplier = selectedNets.length;
-    // Recalculate original amount before previous multipliers if any, but since we come from turf page, it's 1 net.
-    const originalAmount = booking.amount; 
-    const newAmount = originalAmount * multiplier;
-    // Platform fee stays the same or scales? Let's say platform fee scales too.
-    const newPlatformFee = booking.platformFee * multiplier;
-    const newTotal = newAmount + newPlatformFee;
+
+    const amount = selectedSlots.length * booking.amount; // booking.amount = price per hour
+    const platformFee = 40;
+    const total = amount + platformFee;
 
     const updatedBooking: BookingSummary = {
       ...booking,
-      netIds: selectedNetIds,
-      netNames: selectedNets.map(n => n.name),
-      areaType: areaType,
-      amount: newAmount,
-      platformFee: newPlatformFee,
-      total: newTotal,
+      netId: selectedNetId,
+      netName: selectedNet.name,
+      netIds: [selectedNetId],
+      netNames: [selectedNet.name],
+      areaType: selectedNet.areaType,
+      slots: selectedSlots,
+      amount,
+      platformFee,
+      total,
     };
 
     saveCurrentBooking(updatedBooking);
     router.push("/payment");
   };
 
-  // ─── Split nets by area type ─────────────────────────────────────────────
+  // ─── Derived data ──────────────────────────────────────────────────────────
   const indoorNets = nets.filter((n) => n.areaType === "INDOOR");
   const outdoorNets = nets.filter((n) => n.areaType === "OUTDOOR");
+  const selectedNet = nets.find((n) => n.id === selectedNetId) ?? null;
 
   const canProceed =
-    selectedNetIds.length > 0 &&
-    !nets.some(n => selectedNetIds.includes(n.id) && n.areaType === "OUTDOOR" && effectiveIsRainy);
+    selectedNetId !== null &&
+    selectedSlots.length > 0 &&
+    !(selectedNet?.areaType === "OUTDOOR" && effectiveIsRainy);
 
-  // ─── Loading state ───────────────────────────────────────────────────────
+  const totalPrice = selectedSlots.length * (booking?.amount ?? 0);
+
+  // ─── Loading guard ─────────────────────────────────────────────────────────
   if (!booking) {
     return (
       <div className="bg-[#f8f9ff] min-h-screen flex items-center justify-center">
@@ -268,12 +342,12 @@ export default function NetSelectionPage() {
     );
   }
 
-  // ─── Render ──────────────────────────────────────────────────────────────
+  // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="bg-[#f8f9ff] min-h-screen font-sans antialiased text-[#0b1c30]">
       <Navbar />
 
-      <main className="max-w-[1100px] mx-auto px-4 md:px-10 py-6 pb-32 md:pb-10">
+      <main className="max-w-[1100px] mx-auto px-4 md:px-10 py-6 pb-40 md:pb-12">
 
         {/* Back navigation */}
         <button
@@ -285,7 +359,48 @@ export default function NetSelectionPage() {
           Back to Turf Details
         </button>
 
-        {/* ── Booking Summary Banner ─────────────────────────────────────── */}
+        {/* ── Step Progress ──────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-0 mb-6">
+          {[
+            { label: "Date", done: true },
+            { label: "Select Net", done: step === "pick_slots" },
+            { label: "Time Slots", done: false },
+          ].map((s, i) => (
+            <div key={i} className="flex items-center">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                    s.done || (i === 0)
+                      ? "bg-[#003ec7] text-white"
+                      : i === 1 && step === "pick_net"
+                      ? "bg-[#003ec7] text-white"
+                      : i === 2 && step === "pick_slots"
+                      ? "bg-[#003ec7] text-white"
+                      : "bg-[#e5eeff] text-[#737688]"
+                  }`}
+                >
+                  {(s.done && i < (step === "pick_slots" ? 1 : 0)) ? (
+                    <Check className="w-3.5 h-3.5" />
+                  ) : (
+                    i + 1
+                  )}
+                </div>
+                <span
+                  className={`text-sm font-semibold ${
+                    (i === 1 && step === "pick_net") || (i === 2 && step === "pick_slots") || i === 0
+                      ? "text-[#0b1c30]"
+                      : "text-[#737688]"
+                  }`}
+                >
+                  {s.label}
+                </span>
+              </div>
+              {i < 2 && <ChevronRight className="w-4 h-4 text-[#c3c5d9] mx-2" />}
+            </div>
+          ))}
+        </div>
+
+        {/* ── Booking Summary Banner ─────────────────────────────────────────── */}
         <div className="bg-gradient-to-br from-[#003ec7] to-[#1a56e0] rounded-2xl p-5 md:p-7 mb-6 text-white shadow-xl shadow-[#003ec7]/20">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -304,20 +419,18 @@ export default function NetSelectionPage() {
                   <Calendar className="w-4 h-4" />
                   {booking.date}
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock className="w-4 h-4" />
-                  {booking.slots.length} slot{booking.slots.length !== 1 ? "s" : ""} selected
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-4">
-                {booking.slots.map((slot) => (
-                  <span
-                    key={slot}
-                    className="bg-white/15 text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/20"
-                  >
-                    {slot}
+                {selectedNet && (
+                  <span className="flex items-center gap-1.5">
+                    <Home className="w-4 h-4" />
+                    {selectedNet.name}
                   </span>
-                ))}
+                )}
+                {selectedSlots.length > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-4 h-4" />
+                    {selectedSlots.length} slot{selectedSlots.length !== 1 ? "s" : ""} selected
+                  </span>
+                )}
               </div>
             </div>
 
@@ -345,11 +458,11 @@ export default function NetSelectionPage() {
           </div>
         </div>
 
-        {/* ── Rain Alert Banner ──────────────────────────────────────────── */}
+        {/* ── Rain Alert Banner ──────────────────────────────────────────────── */}
         {!loadingNets && effectiveIsRainy && (
           <div
             id="rain-alert-banner"
-            className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-300"
+            className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6"
           >
             <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
               <AlertTriangle className="w-5 h-5 text-amber-600" />
@@ -364,7 +477,7 @@ export default function NetSelectionPage() {
           </div>
         )}
 
-        {/* ── Net Error ─────────────────────────────────────────────────── */}
+        {/* ── Net Error ──────────────────────────────────────────────────────── */}
         {netError && !loadingNets && (
           <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6">
             <Ban className="w-5 h-5 text-red-500 shrink-0" />
@@ -372,9 +485,12 @@ export default function NetSelectionPage() {
           </div>
         )}
 
+        {/* ══════════════════════════════════════════════════════════════════════
+            STEP 1: NET SELECTION
+        ══════════════════════════════════════════════════════════════════════ */}
         <div className="space-y-10">
 
-          {/* ── Indoor Nets Section ─────────────────────────────────────── */}
+          {/* ── Indoor Nets ──────────────────────────────────────────────────── */}
           <section id="indoor-nets-section">
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-full bg-[#e5eeff] flex items-center justify-center">
@@ -385,7 +501,6 @@ export default function NetSelectionPage() {
                 <p className="text-[#737688] text-sm">Climate-controlled, always available</p>
               </div>
             </div>
-
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {loadingNets
                 ? Array.from({ length: 3 }).map((_, i) => <NetCardSkeleton key={i} />)
@@ -393,20 +508,14 @@ export default function NetSelectionPage() {
                     <NetCard
                       key={net.id}
                       net={net}
-                      status={getNetStatus(net, selectedNetIds, effectiveIsRainy, booking.slots)}
-                      onClick={() => {
-                        setSelectedNetIds((prev) =>
-                          prev.includes(net.id)
-                            ? prev.filter((id) => id !== net.id)
-                            : [...prev, net.id]
-                        );
-                      }}
+                      status={getNetStatus(net, selectedNetId, effectiveIsRainy)}
+                      onClick={() => handleNetClick(net)}
                     />
                   ))}
             </div>
           </section>
 
-          {/* ── Outdoor Nets Section ────────────────────────────────────── */}
+          {/* ── Outdoor Nets ─────────────────────────────────────────────────── */}
           <section
             id="outdoor-nets-section"
             className={effectiveIsRainy ? "opacity-60" : ""}
@@ -440,7 +549,6 @@ export default function NetSelectionPage() {
                 </p>
               </div>
             </div>
-
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {loadingNets
                 ? Array.from({ length: 3 }).map((_, i) => <NetCardSkeleton key={i} />)
@@ -448,22 +556,117 @@ export default function NetSelectionPage() {
                     <NetCard
                       key={net.id}
                       net={net}
-                      status={getNetStatus(net, selectedNetIds, effectiveIsRainy, booking.slots)}
-                      onClick={() => {
-                        if (effectiveIsRainy) return;
-                        setSelectedNetIds((prev) =>
-                          prev.includes(net.id)
-                            ? prev.filter((id) => id !== net.id)
-                            : [...prev, net.id]
-                        );
-                      }}
+                      status={getNetStatus(net, selectedNetId, effectiveIsRainy)}
+                      onClick={() => handleNetClick(net)}
                     />
                   ))}
             </div>
           </section>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              STEP 2: TIME SLOT SELECTION (appears after a net is selected)
+          ══════════════════════════════════════════════════════════════════ */}
+          {step === "pick_slots" && selectedNet && (
+            <section
+              id="slot-selection-section"
+              ref={slotPanelRef}
+              className="bg-white border border-[#c3c5d9] rounded-2xl p-6 shadow-[0_4px_20px_rgba(11,28,48,0.06)] animate-in fade-in slide-in-from-bottom-4 duration-300"
+            >
+              {/* Section header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#003ec7] flex items-center justify-center text-white font-bold text-sm shrink-0">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-extrabold text-[#0b1c30] font-serif">
+                      Available Slots
+                    </h2>
+                    <p className="text-[#737688] text-sm">
+                      For <span className="font-semibold text-[#003ec7]">{selectedNet.name}</span>{" "}
+                      on {booking.date}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setSelectedNetId(null); setSelectedSlots([]); setStep("pick_net"); }}
+                  className="text-xs text-[#737688] hover:text-[#003ec7] font-semibold underline"
+                >
+                  Change Net
+                </button>
+              </div>
+
+              {/* Rainy outdoor net guard */}
+              {selectedNet.areaType === "OUTDOOR" && effectiveIsRainy ? (
+                <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-4">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-amber-700 text-sm font-medium">
+                    This outdoor net is blocked due to rainy weather. Please go back and select an
+                    indoor net.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+                    {ALL_TIME_SLOTS.map((slot) => {
+                      const isBooked = selectedNet.bookedSlots.includes(slot);
+                      const isSelected = selectedSlots.includes(slot);
+                      return (
+                        <SlotButton
+                          key={slot}
+                          slot={slot}
+                          isSelected={isSelected}
+                          isBooked={isBooked}
+                          onClick={() => !isBooked && toggleSlot(slot)}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Pricing summary */}
+                  {selectedSlots.length > 0 && (
+                    <div className="bg-[#f8f9ff] p-4 rounded-xl border border-[#e5eeff] mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[#434656] font-medium text-sm">
+                          {selectedSlots.length} slot{selectedSlots.length !== 1 ? "s" : ""} × ₹{booking.amount}
+                        </span>
+                        <span className="text-[#0b1c30] font-bold">₹{totalPrice}</span>
+                      </div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[#434656] font-medium text-sm">Platform Fee</span>
+                        <span className="text-[#0b1c30] font-bold">₹40</span>
+                      </div>
+                      <div className="border-t border-[#c3c5d9] pt-2 mt-2 flex justify-between items-center">
+                        <span className="text-[#0b1c30] font-bold">Total</span>
+                        <span className="text-[#003ec7] font-extrabold text-xl">₹{totalPrice + 40}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hint when no slots selected */}
+                  {selectedSlots.length === 0 && (
+                    <p className="text-center text-[#737688] text-sm mb-4">
+                      Select one or more available time slots above
+                    </p>
+                  )}
+                </>
+              )}
+            </section>
+          )}
+
+          {/* Prompt to select a net */}
+          {step === "pick_net" && !loadingNets && nets.length > 0 && (
+            <div className="flex items-center gap-3 bg-[#f0f4ff] border border-[#d3e4fe] rounded-2xl px-5 py-4">
+              <ChevronDown className="w-5 h-5 text-[#003ec7] shrink-0" />
+              <p className="text-[#434656] text-sm font-medium">
+                Select a net above to view and choose your available time slots.
+              </p>
+            </div>
+          )}
+
         </div>
 
-        {/* ── Booking error ───────────────────────────────────────────────── */}
+        {/* ── Booking error ──────────────────────────────────────────────────── */}
         {bookingError && (
           <div
             id="booking-error-banner"
@@ -475,56 +678,44 @@ export default function NetSelectionPage() {
         )}
       </main>
 
-      {/* ── Sticky Bottom Bar ─────────────────────────────────────────────── */}
+      {/* ── Sticky Bottom Bar ─────────────────────────────────────────────────── */}
       <div className="fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-md border-t border-[#e5eeff] shadow-[0_-8px_32px_rgba(11,28,48,0.08)] z-50">
         <div className="max-w-[1100px] mx-auto px-4 md:px-10 py-4 flex items-center justify-between gap-4">
-          {/* Selected net preview */}
+          {/* Left: selection summary */}
           <div className="flex items-center gap-3">
-            {selectedNetIds.length > 0 ? (
+            {canProceed ? (
               <>
                 <div className="w-10 h-10 rounded-full bg-[#e5eeff] flex items-center justify-center shrink-0">
-                  <span className="text-[#003ec7] font-bold text-sm">
-                    {selectedNetIds.length}
-                  </span>
+                  <Check className="w-5 h-5 text-[#003ec7]" />
                 </div>
                 <div>
-                  <p className="font-bold text-[#0b1c30] text-sm">
-                    {selectedNetIds.length === 1 ? "1 Net Selected" : `${selectedNetIds.length} Nets Selected`}
-                  </p>
+                  <p className="font-bold text-[#0b1c30] text-sm">{selectedNet?.name}</p>
                   <p className="text-[#737688] text-xs">
-                    {nets.filter(n => selectedNetIds.includes(n.id)).map(n => n.name).join(", ")}
+                    {selectedSlots.length} slot{selectedSlots.length !== 1 ? "s" : ""} · ₹{totalPrice + 40}
                   </p>
                 </div>
               </>
+            ) : step === "pick_net" ? (
+              <p className="text-[#737688] text-sm font-medium">Select a net to continue</p>
             ) : (
-              <p className="text-[#737688] text-sm font-medium">
-                No net selected yet
-              </p>
+              <p className="text-[#737688] text-sm font-medium">Select at least one time slot</p>
             )}
           </div>
 
-          {/* Price + Proceed */}
-          <div className="flex items-center gap-4 shrink-0">
-            <div className="text-right hidden sm:block">
-              <p className="text-xs text-[#737688] font-medium">Total</p>
-              <p className="font-extrabold text-[#003ec7] text-xl">
-                ₹{selectedNetIds.length > 0 ? (booking.amount * selectedNetIds.length) + (booking.platformFee * selectedNetIds.length) : booking.total}
-              </p>
-            </div>
-            <button
-              id="proceed-to-payment-btn"
-              onClick={handleProceed}
-              disabled={!canProceed}
-              className={`flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-base transition-all duration-200 ${
-                canProceed
-                  ? "bg-[#003ec7] text-white hover:bg-[#002f96] hover:shadow-lg hover:shadow-[#003ec7]/30 transform hover:-translate-y-0.5"
-                  : "bg-[#e5eeff] text-[#737688] cursor-not-allowed"
-              }`}
-            >
-              {canProceed ? "Proceed to Payment" : "Select a Net"}
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
+          {/* Right: Proceed button */}
+          <button
+            id="proceed-to-payment-btn"
+            onClick={handleProceed}
+            disabled={!canProceed}
+            className={`flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-base transition-all duration-200 ${
+              canProceed
+                ? "bg-[#003ec7] text-white hover:bg-[#002f96] hover:shadow-lg hover:shadow-[#003ec7]/30 transform hover:-translate-y-0.5"
+                : "bg-[#e5eeff] text-[#737688] cursor-not-allowed"
+            }`}
+          >
+            {canProceed ? "Proceed to Payment" : step === "pick_net" ? "Select a Net" : "Select Time Slots"}
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
       </div>
     </div>
