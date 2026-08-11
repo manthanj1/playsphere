@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -9,11 +9,14 @@ import {
   Info,
   CheckCircle2,
   AlertCircle,
+  Minus,
+  Plus,
+  User,
 } from "lucide-react";
 
 import Navbar from "@/components/Navbar";
 import PageContainer from "@/components/PageContainer";
-import { fetchJson } from "@/lib/api";
+import { eventService } from "@/services/eventService";
 import { saveCurrentBooking } from "@/lib/booking";
 
 interface EventTier {
@@ -36,6 +39,7 @@ interface BackendEvent {
     name?: string;
   };
   tiers?: EventTier[];
+  image?: string;
 }
 
 const DEFAULT_TICKET_TIERS: EventTier[] = [
@@ -55,6 +59,7 @@ export default function EventDetailsPage() {
   const params = useParams();
   const eventId = params?.id;
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
   const [event, setEvent] = useState<BackendEvent | null>(null);
   const [eventTiers, setEventTiers] = useState<EventTier[]>(DEFAULT_TICKET_TIERS);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,8 +75,8 @@ export default function EventDetailsPage() {
 
       try {
         setIsLoading(true);
-        const response = await fetchJson(`/api/events/${eventId}`);
-        const backendEvent: BackendEvent | null = response?.event ?? null;
+        const response = await eventService.getEventById(eventId as string);
+        const backendEvent: any = response?.event ?? null;
 
         if (!backendEvent) {
           setError("Event not found.");
@@ -97,27 +102,33 @@ export default function EventDetailsPage() {
     const tier = eventTiers.find((tier) => tier.id === selectedTier);
     if (!tier) return;
 
-    const bookingDate = new Date(event.date).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+    const amount = tier.price * quantity;
+    const platformFee = 25 * quantity;
+    const total = amount + platformFee;
 
-    saveCurrentBooking({
-      type: "event",
+    const bookingPayload = {
+      type: "event" as const,
       itemId: event.id,
       itemName: event.title,
       sportOrCategory: event.category ?? "Event",
       city: event.city ?? "Unknown",
-      date: bookingDate,
-      slots: [],
+      date: new Date(event.date).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+      bookingDate: new Date(event.date).toISOString().split("T")[0],
+      slots: [], // Events may not have time slots in the same way
       tierId: tier.id,
       tierName: tier.name,
-      amount: tier.price,
-      platformFee: 40,
-      total: tier.price + 40,
-      location: event.location ?? event.city ?? "Unknown location",
-    });
+      quantity,
+      amount,
+      platformFee,
+      total,
+      location: event.location ?? event.city ?? "Unknown",
+    };
+
+    saveCurrentBooking(bookingPayload);
 
     router.push("/payment");
   };
@@ -166,7 +177,13 @@ export default function EventDetailsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7 space-y-6">
-            <div className={`w-full h-64 md:h-80 rounded-3xl bg-gradient-to-r ${imageColors[event.id.length % imageColors.length] || imageColors[0]} shadow-md`} />
+            <div className="w-full h-64 md:h-80 rounded-3xl overflow-hidden shadow-md">
+              <img 
+                src={event.image || `https://images.unsplash.com/photo-1540039155732-611174bfc811?auto=format&fit=crop&q=80&w=1200&h=800`} 
+                alt={event.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
             <div>
               <h1 className="text-4xl md:text-5xl font-black font-serif text-[#0b1c30] mb-4">
                 {event.title}
@@ -182,8 +199,8 @@ export default function EventDetailsPage() {
                   <span className="font-semibold text-lg">{event.location ?? event.city ?? "Unknown location"}</span>
                 </div>
                 <div className="flex items-center gap-3 text-[#434656]">
-                  <span className="font-semibold text-lg">Host:</span>
-                  <span className="text-[#434656]">{event.host?.name ?? "Local host"}</span>
+                  <User className="w-5 h-5 text-[#003ec7]" />
+                  <span className="font-semibold text-lg">{event.host?.name ?? "PlaySphere Admin"}</span>
                 </div>
               </div>
 
@@ -239,6 +256,46 @@ export default function EventDetailsPage() {
                     </div>
                   </label>
                 ))}
+              </div>
+
+              {/* Quantity Selector */}
+              <div className="mb-8 flex items-center justify-between bg-[#f8f9ff] p-4 rounded-2xl border border-[#e5eeff]">
+                <div>
+                  <h4 className="font-bold text-[#0b1c30] text-lg">Number of Persons</h4>
+                  <p className="text-sm text-[#434656]">Max 10 tickets per booking</p>
+                </div>
+                <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-xl border border-[#c3c5d9]">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    disabled={quantity <= 1}
+                    className="p-1 rounded-full text-[#434656] hover:bg-[#f0f4ff] hover:text-[#003ec7] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Minus className="w-5 h-5" />
+                  </button>
+                  <span className="font-bold text-xl text-[#0b1c30] w-6 text-center">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(Math.min(10, quantity + 1))}
+                    disabled={quantity >= 10}
+                    className="p-1 rounded-full text-[#434656] hover:bg-[#f0f4ff] hover:text-[#003ec7] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Cancellation Policy */}
+              <div className="mb-6 flex items-start gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
+                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700 font-medium leading-relaxed">
+                  Cancellations and refunds are not allowed for this event booking. Please confirm your details before proceeding.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between mb-6 px-2">
+                <span className="text-[#434656] font-medium">Total Amount</span>
+                <span className="text-2xl font-black text-[#003ec7]">
+                  ₹{selectedTier ? (eventTiers.find(t => t.id === selectedTier)?.price || 0) * quantity + (25 * quantity) : 0}
+                </span>
               </div>
 
               <button

@@ -20,7 +20,10 @@ export interface BookingSummary {
   /** Net fields — populated by the Net Selection page */
   netId?: string;
   netName?: string;
-  areaType?: "INDOOR" | "OUTDOOR";
+  netIds?: string[];
+  netNames?: string[];
+  areaType?: "INDOOR" | "OUTDOOR" | "MIXED";
+  quantity?: number; // Added for event extra persons
 }
 
 const CURRENT_BOOKING_KEY = "playsphere_current_booking";

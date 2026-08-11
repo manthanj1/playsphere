@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User, Bell, LogOut, Loader2, Calendar } from "lucide-react";
-import { fetchJson, fetchWithAuth } from "@/lib/api";
+import { authService } from "@/services/authService";
+import { paymentService } from "@/services/paymentService";
 import Cookies from "js-cookie";
 
 interface BookingSummary {
@@ -53,12 +54,12 @@ export default function NavActions() {
       if (token) {
         try {
           // Fetch updated user from backend
-          const response = await fetchWithAuth('/api/auth/me');
+          const response = await authService.sync();
           
           if (response?.user) {
              setUserProfile(prev => ({
-               name: response.user.name,
-               imageUrl: response.user.imageUrl || "",
+               name: response.user.name || response.user.fullName || "User",
+               imageUrl: response.user.imageUrl || response.user.profilePhotoUrl || "",
                email: response.user.email
              }));
              localStorage.setItem("playSphereUser", JSON.stringify(response.user));
@@ -66,7 +67,7 @@ export default function NavActions() {
           
           // Fetch bookings
           setIsLoadingBookings(true);
-          const bookingRes = await fetchWithAuth('/api/bookings');
+          const bookingRes = await paymentService.getBookings();
           setBookings(bookingRes?.bookings || []);
         } catch (err) {
           console.error("Error fetching data for NavActions", err);
@@ -110,7 +111,8 @@ export default function NavActions() {
 
   const getProfileImageUrl = (url: string) => {
     if (url && !url.startsWith("http") && !url.startsWith("data:")) {
-      return `http://localhost:3001${url}`; // Adjust if api URL changes
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '') || 'http://localhost:3001';
+      return `${baseUrl}${url}`;
     }
     return url;
   };

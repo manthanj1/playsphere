@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
@@ -15,7 +16,7 @@ import Navbar from "@/components/Navbar";
 import PageContainer from "@/components/PageContainer";
 import SectionHeader from "@/components/SectionHeader";
 import SearchInput from "@/components/SearchInput";
-import { fetchJson } from "@/lib/api";
+import { eventService } from "@/services/eventService";
 
 interface EventItem {
   id: string;
@@ -26,6 +27,7 @@ interface EventItem {
   location: string;
   category: string;
   startingPrice: number;
+  image?: string;
   imageColor: string;
   hostName?: string;
 }
@@ -36,6 +38,7 @@ interface BackendEventItem {
   description?: string;
   city?: string;
   date: string;
+  image?: string;
   host?: {
     name?: string;
   };
@@ -63,7 +66,7 @@ export default function EntertainmentEventsPage() {
     async function loadEvents() {
       try {
         setIsLoadingEvents(true);
-        const response = await fetchJson('/api/events');
+        const response = await eventService.getAllEvents();
         const backendEvents: BackendEventItem[] = response?.events ?? [];
 
         const mappedEvents = backendEvents.map((event, index) => ({
@@ -79,6 +82,7 @@ export default function EntertainmentEventsPage() {
           }),
           location: event.city ? `${event.city} Arena` : 'Unknown location',
           startingPrice: 499 + (index % 5) * 300,
+          image: event.image || `https://images.unsplash.com/photo-1540039155732-611174bfc811?auto=format&fit=crop&q=80&w=800&h=600`,
           imageColor: imageColors[index % imageColors.length],
           hostName: event.host?.name,
         }));
@@ -155,13 +159,18 @@ export default function EntertainmentEventsPage() {
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
-              className={`whitespace-nowrap px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
+              className={`whitespace-nowrap flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
                 activeCategory === category
                   ? 'bg-[#0b1c30] text-white shadow-md'
                   : 'bg-white text-[#434656] border border-[#e5eeff] hover:border-[#003ec7] hover:text-[#003ec7]'
               }`}
             >
-              {category === 'All' ? 'All Cities' : category}
+              <span>{category === 'All' ? 'All Cities' : category}</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                activeCategory === category ? 'bg-white/20' : 'bg-[#f0f4ff] text-[#003ec7]'
+              }`}>
+                {category === 'All' ? events.length : events.filter(e => e.city === category).length}
+              </span>
             </button>
           ))}
         </div>
@@ -180,10 +189,15 @@ export default function EntertainmentEventsPage() {
               {filteredEvents.map((event) => (
                 <div
                   key={event.id}
-                  className="bg-white rounded-3xl overflow-hidden border border-[#e5eeff] shadow-[0_12px_32px_rgba(11,28,48,0.04)] hover:shadow-[0_20px_40px_rgba(0,62,199,0.08)] transition-all duration-300 flex flex-col group"
+                  className="bg-white rounded-3xl overflow-hidden border border-[#c3c5d9] shadow-[0_4px_20px_rgba(11,28,48,0.04)] hover:shadow-[0_12px_32px_rgba(11,28,48,0.1)] transition-all duration-300 group flex flex-col h-full"
                 >
-                  <div className={`h-40 w-full bg-gradient-to-r ${event.imageColor} relative p-4 flex flex-col justify-between`}>
-                    <div className="self-end bg-white/20 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold uppercase">
+                  <div className="relative h-56 w-full overflow-hidden">
+                    <img
+                      src={event.image}
+                      alt={event.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-bold text-[#0b1c30] shadow-sm uppercase tracking-wide">
                       {event.category}
                     </div>
                     <Music className="w-10 h-10 text-white/40 absolute bottom-4 left-4" />

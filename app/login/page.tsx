@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogIn, AlertCircle, Eye, EyeOff } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
-
+import { Toaster } from "react-hot-toast";
+import { showToast } from "@/lib/toast";
+import { authService } from "@/services/authService";
 import Cookies from 'js-cookie';
 
 export default function LoginPage() {
@@ -72,20 +73,10 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
+      const data = await authService.login({
+        email: formData.email,
+        password: formData.password,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to sign in');
-      }
 
       // Save token to cookie
       Cookies.set('token', data.token, { expires: 7 });
@@ -94,10 +85,7 @@ export default function LoginPage() {
       localStorage.setItem('playSphereUser', JSON.stringify(data.user));
 
       // Handle Success
-      toast.success("Welcome back to the game!", {
-        style: { border: '1px solid #c3c5d9', padding: '16px', color: '#0b1c30', background: '#ffffff' },
-        iconTheme: { primary: '#003ec7', secondary: '#ffffff' },
-      });
+      showToast("Welcome back to the game!", "success");
 
       setTimeout(() => {
         router.push("/select-city");
@@ -106,9 +94,7 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error("Authentication Error:", error);
       
-      toast.error(error.message || "Invalid email or password.", {
-        style: { border: '1px solid #ff4b4b', padding: '16px', color: '#0b1c30', background: '#ffffff' },
-      });
+      showToast(error.message || "Invalid email or password.", "error");
       
       setIsSubmitting(false);
     }

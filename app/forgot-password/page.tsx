@@ -4,7 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, ArrowLeft, AlertCircle } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import { Toaster } from "react-hot-toast";
+import { showToast } from "@/lib/toast";
+import { authService } from "@/services/authService";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -36,31 +38,9 @@ export default function ForgotPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
+      const data = await authService.forgotPassword(email);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to process request');
-      }
-
-      toast.success(data.message || "Reset link sent! Check your inbox.", {
-        style: {
-          border: '1px solid #c3c5d9',
-          padding: '16px',
-          color: '#0b1c30',
-          background: '#ffffff',
-        },
-        iconTheme: {
-          primary: '#003ec7',
-          secondary: '#ffffff',
-        },
-        duration: 3000,
-      });
+      showToast(data.message || "Reset link sent! Check your inbox.", "success");
 
       // Redirect back to login after sending the link
       setTimeout(() => {
@@ -68,9 +48,7 @@ export default function ForgotPasswordPage() {
       }, 3000);
     } catch (error: any) {
       console.error("Forgot Password Error:", error);
-      toast.error(error.message || "Failed to process request.", {
-        style: { border: '1px solid #ff4b4b', padding: '16px', color: '#0b1c30', background: '#ffffff' },
-      });
+      showToast(error.message || "Failed to process request.", "error");
       setIsSubmitting(false);
     }
   };

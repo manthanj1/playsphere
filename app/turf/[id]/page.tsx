@@ -3,7 +3,7 @@
 import Navbar from "@/components/Navbar";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { fetchJson } from "@/lib/api";
+import { turfService, TurfItem } from "@/services/turfService";
 import { saveCurrentBooking } from "@/lib/booking";
 import {
   ArrowLeft,
@@ -19,21 +19,6 @@ import {
   Heart,
   AlertCircle,
 } from "lucide-react";
-
-interface TurfItem {
-  id: number;
-  name: string;
-  city: string;
-  location: string;
-  sport: string;
-  price: number;
-  rating: number;
-  reviews: number;
-  image: string;
-  availability: string;
-  description: string;
-  amenities: string[];
-}
 
 const generateDates = () => {
   const dates = [];
@@ -82,7 +67,7 @@ export default function TurfDetailPage() {
 
       try {
         setIsLoading(true);
-        const response = await fetchJson(`/api/turfs/${turfId}`);
+        const response = await turfService.getTurfById(turfId as string);
         setTurfDetail(response?.turf ?? null);
         setLoadError(null);
       } catch (error: any) {
@@ -326,6 +311,14 @@ export default function TurfDetailPage() {
                   </div>
                 </div>
               )}
+
+              {/* Cancellation Policy */}
+              <div className="mb-6 flex items-start gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
+                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700 font-medium leading-relaxed">
+                  Cancellations and refunds are not allowed for turf bookings. Please confirm your date and time before proceeding.
+                </p>
+              </div>
 
               <button
                 onClick={handleChooseNet}

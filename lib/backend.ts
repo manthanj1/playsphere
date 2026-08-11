@@ -35,6 +35,7 @@ export interface EventItem {
   location: string;
   date: string;
   price: number;
+  image?: string;
   host: EventHost;
   tiers: EventTicketTier[];
 }
@@ -220,6 +221,7 @@ export const events: EventItem[] = [
     location: "Ahmedabad Exhibition Grounds",
     date: "2026-09-10T17:00:00.000Z",
     price: 799,
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAWszFO7fxEiOqntziJH-UA_0cTaOkgvM8MTC6YL8Jq1JJstsQYLtGViWCrEidQzTi40uaIjb1xJP0mt6RqoRWH6DdVE3wJ2UaigICABlBBvASi53QkqyHf6Ca4zaYzOP0KvNjhBYYsHvcbeJ-swjj07xwnHel3QFrO4xmr_e9R9b2-nAVWin1E2k3eyhA81rNUb2nVoTa-fbWZPJmnDvi8cNqhFdQ4GJ2hIZbOKsw3x0_T9yhvRUF9dg",
     host: { id: "host-1", name: "PlaySphere Admin", email: "admin@playsphere.test" },
     tiers: [
       { id: "standard", name: "Standard Pass", price: 799, features: ["Access to all sports arenas", "Free hydration", "Spectator access"] },
@@ -235,6 +237,7 @@ export const events: EventItem[] = [
     location: "Surat Yoga Complex",
     date: "2026-09-18T08:30:00.000Z",
     price: 599,
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDIYAl0mhbrDKB0O6fLp583SWF_-3FxSM_Rcq6aG-mu4tZDrRZQYYFUeZ0IL3_UtT--uGg5bsxE_hmcVhppWwSvyg-GXP33RDyjdTS1Es6sNfjQy6DC8yieogTbvHjzVWjOr-AW-LOQ5wOQaSI0fDnR8jXW5IHLhpQEBbv4xVQsQqAqzo61zuCLCmrBzwaWr8ah8S8tk0VXYGiDGtGKjDc4DoTctkRglNI4PdHw79O623k31isvI5jnpQ",
     host: { id: "host-2", name: "Yoga for Life", email: "contact@yogaforlife.test" },
     tiers: [
       { id: "general", name: "General Admission", price: 599, features: ["Event entry", "Workshop access"] },
@@ -250,6 +253,7 @@ export const events: EventItem[] = [
     location: "Gandhinagar Riverfront",
     date: "2026-10-05T19:00:00.000Z",
     price: 999,
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCGfeX0XI_wpvEB1xxJFMRJ2f-K3RKFTfO7uI91bcYsjBr4bcBHLT9y3EYSM9u0l6yDYB3arqXj1meUTnWT59643bCrQBpdml-w0pswnULSj_D5Y7q1Ey122B7AXtBz2sh1znbwuGFPRFctu670WL3vHP1tpr_AtKtYG0ddB2wyjhlGW0dLoDpJLAHQiQY5xZAcLvZTCJSQEqwiXACf6n3iU-abOn4Gw1ai2kQrh41gYPtpD-RXu3nFiA",
     host: { id: "host-3", name: "RunTogether", email: "hello@runtogether.test" },
     tiers: [
       { id: "participant", name: "Participant", price: 999, features: ["Entry bib", "Hydration", "Medal"] },
@@ -265,6 +269,7 @@ export const events: EventItem[] = [
     location: "Vadodara Exhibition Centre",
     date: "2026-10-16T20:00:00.000Z",
     price: 499,
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBEf26GvW30KkO37_y0X3c-a9qXwB6p4K151n5XqjI-zP99uX6xL5H9P_b3aX2J8G50V_I4G_vE0n0E2Xz1Q4V7T35Gv43G4cE5T4j_vB7QxVn4J8G3L7K1aB_T1K_C9n4uP7A_X8P7_D7W_wF7R8H6_tD1M0uP5S4Q_L_L0wH6X0jH4aB3",
     host: { id: "host-4", name: "Garba Central", email: "connect@garbacentral.test" },
     tiers: [
       { id: "regular", name: "Regular Entry", price: 499, features: ["General seating", "Live show access"] },
@@ -280,6 +285,7 @@ export const events: EventItem[] = [
     location: "The Amphitheatre",
     date: "2026-11-02T18:00:00.000Z",
     price: 1299,
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuB3R1pD_q9EwR1oJ_P7rB_N7n8X7Q_L7C3_W2mJ_K7R8A_L3E_R5X3P8H9C4B7R_L7A9X7n9J7H_rP4L_P7K3J3H1mE_aC8I3P8_D3B8J3N7C9B1E3aG3wF5X8D7Q_H9P3bC_aX9K1O9T3M3n9O8aA9K5J7L5J1X8",
     host: { id: "host-5", name: "Melody Makers", email: "info@melodymakers.test" },
     tiers: [
       { id: "general", name: "General", price: 1299, features: ["Concert access", "Food vouchers"] },
@@ -295,10 +301,11 @@ export const events: EventItem[] = [
     location: "Tapi Valley Resort",
     date: "2026-11-12T09:00:00.000Z",
     price: 1499,
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCALijbBIkKtCLNRjYE26kZ8HXn2wPWzKImGBd6WTKylX9XeYw8ENhGlI3DFh_g-PQTzfS8FfvLvKXDR1Yvgq3UCDDEpvf28UuRVFw-UJy9IM5lc__h3I1WJfQuHXKYoRCOcu6z7ButltxHOF-2z5d8HVCPunwtunrYEa8Q3cwyWRdGMqmB2bIpjYFX0MqA2icSArQRTjag9m19j1VOoQm84wMLdAQg8p8TjOTsUhWUY0tOEGjBEhG4sQ",
     host: { id: "host-6", name: "WellPath", email: "hello@wellpath.test" },
     tiers: [
       { id: "retreat", name: "Retreat Pass", price: 1499, features: ["All workshops", "Wellness kit"] },
-      { id: "deluxe", name: "Deluxe Pass", price: 2499, features: ["Private session", "Spa access"] },
+      { id: "stay", name: "Overnight Stay", price: 3999, features: ["Accommodation", "Meals", "Private sessions"] },
     ],
   },
   {
@@ -310,6 +317,7 @@ export const events: EventItem[] = [
     location: "Capital Sports Complex",
     date: "2026-12-05T16:00:00.000Z",
     price: 299,
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAWszFO7fxEiOqntziJH-UA_0cTaOkgvM8MTC6YL8Jq1JJstsQYLtGViWCrEidQzTi40uaIjb1xJP0mt6RqoRWH6DdVE3wJ2UaigICABlBBvASi53QkqyHf6Ca4zaYzOP0KvNjhBYYsHvcbeJ-swjj07xwnHel3QFrO4xmr_e9R9b2-nAVWin1E2k3eyhA81rNUb2nVoTa-fbWZPJmnDvi8cNqhFdQ4GJ2hIZbOKsw3x0_T9yhvRUF9dg",
     host: { id: "host-7", name: "TechPlay", email: "events@techplay.test" },
     tiers: [
       { id: "general", name: "General Admission", price: 299, features: ["Match access", "Networking"] },
@@ -325,6 +333,7 @@ export const events: EventItem[] = [
     location: "The Arena",
     date: "2026-11-15T19:30:00.000Z",
     price: 1599,
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuB3R1pD_q9EwR1oJ_P7rB_N7n8X7Q_L7C3_W2mJ_K7R8A_L3E_R5X3P8H9C4B7R_L7A9X7n9J7H_rP4L_P7K3J3H1mE_aC8I3P8_D3B8J3N7C9B1E3aG3wF5X8D7Q_H9P3bC_aX9K1O9T3M3n9O8aA9K5J7L5J1X8",
     host: { id: "host-8", name: "Rhythm House", email: "contact@rhythmhouse.test" },
     tiers: [
       { id: "standard", name: "General", price: 1599, features: ["Standard seating", "Concert access"] },

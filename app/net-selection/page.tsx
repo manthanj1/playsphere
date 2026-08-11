@@ -16,24 +16,8 @@ import {
   Sun,
 } from "lucide-react";
 import { getCurrentBooking, saveCurrentBooking, BookingSummary } from "@/lib/booking";
-import { fetchJson } from "@/lib/api";
+import { turfService, NetData, NetsApiResponse } from "@/services/turfService";
 import Navbar from "@/components/Navbar";
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface NetData {
-  id: string;
-  name: string;
-  areaType: "INDOOR" | "OUTDOOR";
-  bookedSlots: string[];
-}
-
-interface NetsApiResponse {
-  nets: NetData[];
-  isRainy: boolean;
-  weatherCode: number | null;
-  temperature: number | null;
-}
 
 type NetStatus = "available" | "selected" | "rain-disabled" | "already-booked";
 
@@ -41,11 +25,11 @@ type NetStatus = "available" | "selected" | "rain-disabled" | "already-booked";
 
 function getNetStatus(
   net: NetData,
-  selectedNetId: string | null,
+  selectedNetIds: string[],
   isRainy: boolean,
   userSlots: string[]
 ): NetStatus {
-  if (net.id === selectedNetId) return "selected";
+  if (selectedNetIds.includes(net.id)) return "selected";
   if (net.areaType === "OUTDOOR" && isRainy) return "rain-disabled";
   const hasConflict = userSlots.some((s) => net.bookedSlots.includes(s));
   if (hasConflict) return "already-booked";
@@ -170,7 +154,7 @@ export default function NetSelectionPage() {
   const [nets, setNets] = useState<NetData[]>([]);
   const [isRainy, setIsRainy] = useState(false);
   const [temperature, setTemperature] = useState<number | null>(null);
-  const [selectedNetId, setSelectedNetId] = useState<string | null>(null);
+  const [selectedNetIds, setSelectedNetIds] = useState<string[]>([]);
   const [loadingNets, setLoadingNets] = useState(true);
   const [netError, setNetError] = useState<string | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
@@ -199,9 +183,7 @@ export default function NetSelectionPage() {
       setLoadingNets(true);
       setNetError(null);
       try {
-        const data: NetsApiResponse = await fetchJson(
-          `/api/turfs/${turfId}/nets${date ? `?date=${encodeURIComponent(date)}` : ""}`
-        );
+        const data: NetsApiResponse = await turfService.getTurfNets(turfId, date);
         setNets(data.nets ?? []);
         setIsRainy(data.isRainy ?? false);
         setTemperature(data.temperature ?? null);
@@ -215,32 +197,54 @@ export default function NetSelectionPage() {
     loadNets();
   }, [booking]);
 
-  // ── Deselect outdoor net if it turns rainy ──────────────────────────────────
+  // ── Deselect outdoor nets if it turns rainy ──────────────────────────────────
   useEffect(() => {
-    if (!effectiveIsRainy || !selectedNetId) return;
-    const net = nets.find((n) => n.id === selectedNetId);
-    if (net?.areaType === "OUTDOOR") setSelectedNetId(null);
-  }, [effectiveIsRainy, nets, selectedNetId]);
+    if (!effectiveIsRainy || selectedNetIds.length === 0) return;
+    const outdoorsSelected = nets.some(n => selectedNetIds.includes(n.id) && n.areaType === "OUTDOOR");
+    if (outdoorsSelected) {
+      setSelectedNetIds(prev => prev.filter(id => {
+         const n = nets.find(net => net.id === id);
+         return n?.areaType !== "OUTDOOR";
+      }));
+    }
+  }, [effectiveIsRainy, nets, selectedNetIds]);
 
-  // ── Proceed ─────────────────────────────────────────────────────────────────
   const handleProceed = () => {
-    if (!booking || !selectedNetId) return;
-    const selectedNet = nets.find((n) => n.id === selectedNetId);
-    if (!selectedNet) return;
+    if (!booking || selectedNetIds.length === 0) return;
+    
+    const selectedNets = nets.filter((n) => selectedNetIds.includes(n.id));
+    if (selectedNets.length === 0) return;
 
     setBookingError(null);
 
     // If outdoor net and it just became rainy, block silently
-    if (selectedNet.areaType === "OUTDOOR" && effectiveIsRainy) {
-      setBookingError("Outdoor nets are blocked due to rainy conditions. Please choose an indoor net.");
+    if (selectedNets.some(n => n.areaType === "OUTDOOR") && effectiveIsRainy) {
+      setBookingError("Outdoor nets are blocked due to rainy conditions. Please choose indoor nets only.");
       return;
     }
+    
+    // Determine mixed area type
+    const hasIndoor = selectedNets.some(n => n.areaType === "INDOOR");
+    const hasOutdoor = selectedNets.some(n => n.areaType === "OUTDOOR");
+    const areaType = hasIndoor && hasOutdoor ? "MIXED" : hasIndoor ? "INDOOR" : "OUTDOOR";
+    
+    // Original turf booking amount is for a single net. Multiple nets multiply the cost.
+    const multiplier = selectedNets.length;
+    // Recalculate original amount before previous multipliers if any, but since we come from turf page, it's 1 net.
+    const originalAmount = booking.amount; 
+    const newAmount = originalAmount * multiplier;
+    // Platform fee stays the same or scales? Let's say platform fee scales too.
+    const newPlatformFee = booking.platformFee * multiplier;
+    const newTotal = newAmount + newPlatformFee;
 
     const updatedBooking: BookingSummary = {
       ...booking,
-      netId: selectedNet.id,
-      netName: selectedNet.name,
-      areaType: selectedNet.areaType,
+      netIds: selectedNetIds,
+      netNames: selectedNets.map(n => n.name),
+      areaType: areaType,
+      amount: newAmount,
+      platformFee: newPlatformFee,
+      total: newTotal,
     };
 
     saveCurrentBooking(updatedBooking);
@@ -251,11 +255,9 @@ export default function NetSelectionPage() {
   const indoorNets = nets.filter((n) => n.areaType === "INDOOR");
   const outdoorNets = nets.filter((n) => n.areaType === "OUTDOOR");
 
-  const selectedNet = nets.find((n) => n.id === selectedNetId) ?? null;
   const canProceed =
-    selectedNetId !== null &&
-    selectedNet !== null &&
-    !(selectedNet.areaType === "OUTDOOR" && effectiveIsRainy);
+    selectedNetIds.length > 0 &&
+    !nets.some(n => selectedNetIds.includes(n.id) && n.areaType === "OUTDOOR" && effectiveIsRainy);
 
   // ─── Loading state ───────────────────────────────────────────────────────
   if (!booking) {
@@ -391,8 +393,14 @@ export default function NetSelectionPage() {
                     <NetCard
                       key={net.id}
                       net={net}
-                      status={getNetStatus(net, selectedNetId, effectiveIsRainy, booking.slots)}
-                      onClick={() => setSelectedNetId(net.id)}
+                      status={getNetStatus(net, selectedNetIds, effectiveIsRainy, booking.slots)}
+                      onClick={() => {
+                        setSelectedNetIds((prev) =>
+                          prev.includes(net.id)
+                            ? prev.filter((id) => id !== net.id)
+                            : [...prev, net.id]
+                        );
+                      }}
                     />
                   ))}
             </div>
@@ -440,8 +448,15 @@ export default function NetSelectionPage() {
                     <NetCard
                       key={net.id}
                       net={net}
-                      status={getNetStatus(net, selectedNetId, effectiveIsRainy, booking.slots)}
-                      onClick={() => setSelectedNetId(net.id)}
+                      status={getNetStatus(net, selectedNetIds, effectiveIsRainy, booking.slots)}
+                      onClick={() => {
+                        if (effectiveIsRainy) return;
+                        setSelectedNetIds((prev) =>
+                          prev.includes(net.id)
+                            ? prev.filter((id) => id !== net.id)
+                            : [...prev, net.id]
+                        );
+                      }}
                     />
                   ))}
             </div>
@@ -465,18 +480,20 @@ export default function NetSelectionPage() {
         <div className="max-w-[1100px] mx-auto px-4 md:px-10 py-4 flex items-center justify-between gap-4">
           {/* Selected net preview */}
           <div className="flex items-center gap-3">
-            {selectedNet ? (
+            {selectedNetIds.length > 0 ? (
               <>
                 <div className="w-10 h-10 rounded-full bg-[#e5eeff] flex items-center justify-center shrink-0">
-                  {selectedNet.areaType === "INDOOR" ? (
-                    <Home className="w-5 h-5 text-[#003ec7]" />
-                  ) : (
-                    <Sun className="w-5 h-5 text-[#003ec7]" />
-                  )}
+                  <span className="text-[#003ec7] font-bold text-sm">
+                    {selectedNetIds.length}
+                  </span>
                 </div>
                 <div>
-                  <p className="font-bold text-[#0b1c30] text-sm">{selectedNet.name}</p>
-                  <p className="text-[#737688] text-xs">{selectedNet.areaType === "INDOOR" ? "Indoor" : "Outdoor"} Net</p>
+                  <p className="font-bold text-[#0b1c30] text-sm">
+                    {selectedNetIds.length === 1 ? "1 Net Selected" : `${selectedNetIds.length} Nets Selected`}
+                  </p>
+                  <p className="text-[#737688] text-xs">
+                    {nets.filter(n => selectedNetIds.includes(n.id)).map(n => n.name).join(", ")}
+                  </p>
                 </div>
               </>
             ) : (
@@ -490,7 +507,9 @@ export default function NetSelectionPage() {
           <div className="flex items-center gap-4 shrink-0">
             <div className="text-right hidden sm:block">
               <p className="text-xs text-[#737688] font-medium">Total</p>
-              <p className="font-extrabold text-[#003ec7] text-xl">₹{booking.total}</p>
+              <p className="font-extrabold text-[#003ec7] text-xl">
+                ₹{selectedNetIds.length > 0 ? (booking.amount * selectedNetIds.length) + (booking.platformFee * selectedNetIds.length) : booking.total}
+              </p>
             </div>
             <button
               id="proceed-to-payment-btn"

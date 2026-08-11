@@ -1,12 +1,13 @@
-﻿"use client";
+"use client";
 
 export const dynamic = "force-dynamic";
 
 import Navbar from "@/components/Navbar";
 import PageContainer from "@/components/PageContainer";
 import SearchInput from "@/components/SearchInput";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Search,
   MapPin,
@@ -15,24 +16,12 @@ import {
   Clock,
   Filter,
 } from "lucide-react";
-import { fetchJson } from "@/lib/api";
-
-interface TurfItem {
-  id: number;
-  name: string;
-  city: string;
-  location: string;
-  sport: string;
-  price: number;
-  rating: number;
-  reviews: number;
-  image: string;
-  availability: string;
-}
+import { turfService, TurfItem } from "@/services/turfService";
 
 const categories = ["All", "Cricket", "Football", "Tennis", "Padel", "Multi-sport"];
 
 export default function SportsListingPage() {
+  const router = useRouter();
   const [cityQuery, setCityQuery] = useState("");
 
   useEffect(() => {
@@ -51,7 +40,7 @@ export default function SportsListingPage() {
     async function loadTurfs() {
       try {
         setIsLoading(true);
-        const response = await fetchJson('/api/turfs');
+        const response = await turfService.getAllTurfs();
         setTurfs(response?.turfs ?? []);
         setLoadError(null);
       } catch (error: any) {
@@ -99,13 +88,36 @@ export default function SportsListingPage() {
             </h1>
           </div>
 
-          <SearchInput
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder={`Search ${cityName} turfs...`}
-            icon={Search}
-            className="w-full md:w-80"
-          />
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+            <div className="relative w-full sm:w-auto">
+              <select
+                value={cityQuery}
+                onChange={(e) => {
+                  const newCity = e.target.value;
+                  setCityQuery(newCity);
+                  router.push(`/sports${newCity ? `?city=${newCity}` : ''}`);
+                }}
+                className="w-full sm:w-auto appearance-none bg-white border border-[#c3c5d9] text-[#0b1c30] font-semibold text-sm rounded-xl px-4 py-2.5 pr-8 focus:outline-none focus:ring-2 focus:ring-[#003ec7] transition-all cursor-pointer"
+              >
+                <option value="">All Cities</option>
+                <option value="ahmedabad">Ahmedabad</option>
+                <option value="surat">Surat</option>
+                <option value="gandhinagar">Gandhinagar</option>
+                <option value="vadodara">Vadodara</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-[#737688]">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
+            
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder={`Search turfs...`}
+              icon={Search}
+              className="w-full sm:w-64 md:w-80"
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-3 overflow-x-auto pb-4 mb-6 scrollbar-hide">

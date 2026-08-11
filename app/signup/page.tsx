@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation"; 
 import { User, Mail, Phone, Lock, X, AlertCircle, Eye, EyeOff } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
-
+import { Toaster } from "react-hot-toast";
+import { showToast } from "@/lib/toast";
+import { authService } from "@/services/authService";
 import Cookies from 'js-cookie';
 
 export default function SignUpPage() {
@@ -97,22 +98,12 @@ export default function SignUpPage() {
     setIsSubmitting(true); 
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          name: formData.fullName,
-          phone: formData.phone,
-        }),
+      const data = await authService.register({
+        email: formData.email,
+        password: formData.password,
+        name: formData.fullName,
+        phone: formData.phone,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create account');
-      }
 
       // Save token to cookie
       Cookies.set('token', data.token, { expires: 7 });
@@ -121,19 +112,7 @@ export default function SignUpPage() {
       localStorage.setItem('playSphereUser', JSON.stringify(data.user));
 
       // Handle Success
-      toast.success("Account created successfully! Redirecting...", {
-        style: {
-          border: '1px solid #c3c5d9',
-          padding: '16px',
-          color: '#0b1c30',
-          background: '#ffffff',
-        },
-        iconTheme: {
-          primary: '#003ec7',
-          secondary: '#ffffff',
-        },
-        duration: 2000,
-      });
+      showToast("Account created successfully! Redirecting...", "success");
 
       setTimeout(() => {
         router.push("/login");
@@ -142,9 +121,7 @@ export default function SignUpPage() {
     } catch (error: any) {
       console.error("Sign-up Error:", error);
       
-      toast.error(error.message || "Failed to create account. Please try again.", {
-        style: { border: '1px solid #ff4b4b', padding: '16px', color: '#0b1c30', background: '#ffffff' },
-      });
+      showToast(error.message || "Failed to create account. Please try again.", "error");
       
       setIsSubmitting(false);
     }

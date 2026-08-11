@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, AlertCircle, Eye, EyeOff } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import { Toaster } from "react-hot-toast";
+import { showToast } from "@/lib/toast";
+import { authService } from "@/services/authService";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -24,7 +26,7 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (!token || !email) {
-      toast.error("Invalid or missing reset token.");
+      showToast("Invalid or missing reset token.", "error");
     }
   }, [token, email]);
 
@@ -59,31 +61,9 @@ export default function ResetPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/auth/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, token, newPassword: password }),
-      });
+      const data = await authService.resetPassword({ email, token, newPassword: password });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to reset password');
-      }
-
-      toast.success("Password has been reset successfully!", {
-        style: {
-          border: '1px solid #c3c5d9',
-          padding: '16px',
-          color: '#0b1c30',
-          background: '#ffffff',
-        },
-        iconTheme: {
-          primary: '#003ec7',
-          secondary: '#ffffff',
-        },
-        duration: 3000,
-      });
+      showToast("Password has been reset successfully!", "success");
 
       // Redirect back to login
       setTimeout(() => {
@@ -91,9 +71,7 @@ export default function ResetPasswordPage() {
       }, 3000);
     } catch (error: any) {
       console.error("Reset Password Error:", error);
-      toast.error(error.message || "Failed to reset password.", {
-        style: { border: '1px solid #ff4b4b', padding: '16px', color: '#0b1c30', background: '#ffffff' },
-      });
+      showToast(error.message || "Failed to reset password.", "error");
       setIsSubmitting(false);
     }
   };

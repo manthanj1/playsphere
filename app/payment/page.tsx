@@ -9,7 +9,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { getCurrentBooking, saveConfirmedBooking, clearCurrentBooking, BookingSummary } from "@/lib/booking";
-import { fetchJson, fetchWithAuth } from "@/lib/api";
+import { paymentService } from "@/services/paymentService";
 
 export default function PaymentPage() {
   const router = useRouter();
@@ -58,10 +58,7 @@ export default function PaymentPage() {
         };
       }
 
-      const createRes = await fetchWithAuth("/api/payment/create-order", {
-        method: "POST",
-        body: JSON.stringify({ amount: booking.total }),
-      });
+      const createRes = await paymentService.createOrder(booking.total);
 
       if (!createRes?.order?.id) {
         setError("Unable to initialize payment gateway.");
@@ -81,20 +78,14 @@ export default function PaymentPage() {
           order_id: createRes.order.id,
           handler: async function (response: any) {
             try {
-              const verifyRes = await fetchWithAuth("/api/payment/verify", {
-                method: "POST",
-                body: JSON.stringify({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                })
+              const verifyRes = await paymentService.verifyPayment({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
               });
   
               if (verifyRes?.success) {
-                const bookingRes = await fetchWithAuth("/api/bookings", {
-                  method: "POST",
-                  body: JSON.stringify(bookingPayload),
-                });
+                const bookingRes = await paymentService.createBooking(bookingPayload);
   
                 if (!bookingRes?.booking) {
                   setError("Payment successful but booking failed. Please contact support.");

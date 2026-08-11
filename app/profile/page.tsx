@@ -14,13 +14,15 @@ import {
   Trophy, 
   User,
   Check,
-  X
+  X,
+  Camera
 } from "lucide-react";
+import Cookies from "js-cookie";
+import { authService } from "@/services/authService";
+import { paymentService } from "@/services/paymentService";
 
 import Navbar from "@/components/Navbar";
 import PageContainer from "@/components/PageContainer";
-import { fetchJson, fetchWithAuth, buildUrl, getAuthToken } from "@/lib/api";
-import Cookies from "js-cookie";
 import SectionHeader from "@/components/SectionHeader";
 import { getConfirmedBooking } from "@/lib/booking";
 
@@ -122,7 +124,7 @@ export default function ProfilePage() {
       };
 
       try {
-        const response = await fetchWithAuth('/api/auth/me');
+        const response = await authService.getMe();
         const backendUser = response?.user || null;
         
         // If we want to sync the frontend data to backend on page load:
@@ -137,10 +139,7 @@ export default function ProfilePage() {
           imageUrl: backendUser?.imageUrl || "",
         };
         
-        const syncResponse = await fetchWithAuth('/api/auth/sync', {
-          method: 'POST',
-          body: JSON.stringify(profilePayload),
-        });
+        const syncResponse = await authService.updateProfile(profilePayload);
         
         const updatedUser = syncResponse?.user || backendUser;
         const profileData = buildProfile(updatedUser);
@@ -149,7 +148,7 @@ export default function ProfilePage() {
         localStorage.setItem('playSphereUser', JSON.stringify(profileData));
 
         if (updatedUser?.email) {
-          const bookingResponse = await fetchWithAuth(`/api/bookings`);
+          const bookingResponse = await paymentService.getBookings();
           const userBookings = bookingResponse?.bookings ?? [];
           setBookings(userBookings);
         }
@@ -202,19 +201,10 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (file && editFormData) {
       try {
-        const token = await getAuthToken();
         const formData = new FormData();
         formData.append("photo", file);
         
-        const res = await fetch(buildUrl("/api/auth/profile-photo"), {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`
-          },
-          body: formData
-        });
-        
-        const data = await res.json();
+        const data = await authService.updateProfilePhoto(formData);
         if (data.imageUrl) {
           setEditFormData({
             ...editFormData,
@@ -443,8 +433,18 @@ export default function ProfilePage() {
               />
               
               <div className="flex flex-col gap-4">
-                {bookings.length > 0 ? (
-                  bookings.map((booking, idx) => (
+                {bookings.filter(b => {
+                  const bookingDate = new Date(b.date);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  return bookingDate >= today;
+                }).length > 0 ? (
+                  bookings.filter(b => {
+                    const bookingDate = new Date(b.date);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    return bookingDate >= today;
+                  }).map((booking, idx) => (
                     <div key={idx} className="bg-white rounded-2xl border border-[#c3c5d9] p-0 shadow-[0_4px_20px_rgba(11,28,48,0.05)] hover:shadow-[0_12px_32px_rgba(11,28,48,0.12)] transition-shadow hover:-translate-y-1 transform duration-200 overflow-hidden flex flex-col sm:flex-row">
                       <div className="sm:w-1/3 h-48 sm:h-auto relative bg-[#e5eeff] flex items-center justify-center">
                         <Trophy className="w-12 h-12 text-[#003ec7] opacity-20 absolute" />
@@ -461,8 +461,7 @@ export default function ProfilePage() {
                           <p className="text-sm text-[#434656]">{booking.location}</p>
                         </div>
                         <div className="flex gap-2">
-                          <button className="bg-[#003ec7] hover:bg-[#0038b6] transition-colors text-white font-semibold text-sm py-2 px-4 rounded-lg flex-1">View</button>
-                          <button className="border border-[#737688] hover:bg-[#f8f9ff] transition-colors text-[#0b1c30] font-semibold text-sm py-2 px-4 rounded-lg">Cancel</button>
+                          <Link href={`/booking-success?booking_id=${booking.bookingId || (booking as any).id}`} className="bg-[#003ec7] hover:bg-[#0038b6] transition-colors text-white font-semibold text-sm py-2 px-4 rounded-lg flex-1 text-center flex items-center justify-center">View</Link>
                         </div>
                       </div>
                     </div>
