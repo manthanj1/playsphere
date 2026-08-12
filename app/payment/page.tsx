@@ -88,7 +88,12 @@ export default function PaymentPage() {
             });
 
             if (verifyRes?.success) {
-              const bookingRes = await paymentService.createBooking(bookingPayload);
+              const finalBookingPayload = {
+                ...bookingPayload,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpayOrderId: response.razorpay_order_id,
+              };
+              const bookingRes = await paymentService.createBooking(finalBookingPayload);
 
               if (!bookingRes?.booking) {
                 setError("Payment successful but booking failed. Please contact support.");
