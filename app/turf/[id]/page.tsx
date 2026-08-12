@@ -137,7 +137,7 @@ export default function TurfDetailPage() {
         </button>
 
         {/* Cover Image */}
-        <div className="w-full h-[30vh] md:h-[50vh] rounded-2xl md:rounded-3xl overflow-hidden relative mb-8 shadow-sm group">
+        <div className="w-full h-64 md:h-[400px] lg:h-[500px] rounded-2xl md:rounded-3xl overflow-hidden relative mb-8 shadow-sm group">
           <img
             src={turfDetail.image}
             alt={turfDetail.name}
@@ -192,6 +192,28 @@ export default function TurfDetailPage() {
                 ))}
               </div>
             </section>
+
+            <hr className="border-[#c3c5d9]" />
+
+            <section>
+              <h2 className="text-2xl font-bold font-serif text-[#0b1c30] mb-2">Location</h2>
+              <p className="text-[#434656] text-base mb-4 flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-[#003ec7]" />
+                {turfDetail.location}, {turfDetail.city}
+              </p>
+              <div className="w-full h-[300px] rounded-2xl overflow-hidden border border-[#c3c5d9] shadow-[0_4px_20px_rgba(11,28,48,0.05)]">
+                <iframe
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(turfDetail.name + ', ' + turfDetail.location + ', ' + turfDetail.city)}&z=15&output=embed`}
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title={`${turfDetail.name} Location`}
+                ></iframe>
+              </div>
+            </section>
           </div>
 
           {/* Right: Booking Card */}
@@ -228,11 +250,10 @@ export default function TurfDetailPage() {
                     <button
                       key={index}
                       onClick={() => setSelectedDate(index)}
-                      className={`flex flex-col items-center justify-center min-w-[72px] p-3 rounded-xl border transition-all ${
-                        selectedDate === index
+                      className={`flex flex-col items-center justify-center min-w-[72px] p-3 rounded-xl border transition-all ${selectedDate === index
                           ? "bg-[#003ec7] border-[#003ec7] text-white shadow-md transform -translate-y-1"
                           : "bg-white border-[#c3c5d9] text-[#434656] hover:border-[#003ec7]"
-                      }`}
+                        }`}
                     >
                       <span className={`text-xs font-semibold uppercase ${selectedDate === index ? "text-[#dce9ff]" : "text-[#737688]"}`}>
                         {item.month}

@@ -15,9 +15,11 @@ import {
   User,
   Check,
   X,
-  Camera
+  Camera,
+  CreditCard
 } from "lucide-react";
 import Cookies from "js-cookie";
+import toast from "react-hot-toast";
 import { authService } from "@/services/authService";
 import { paymentService } from "@/services/paymentService";
 
@@ -54,6 +56,7 @@ interface BookingSummary {
   total: number;
   location: string;
   createdAt?: string;
+  imageUrl?: string;
 }
 
 function getInitials(name: string) {
@@ -76,6 +79,8 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editFormData, setEditFormData] = useState<UserProfile | null>(null);
   const [bookings, setBookings] = useState<BookingSummary[]>([]);
+  const [showAllBookings, setShowAllBookings] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   // Ref for the hidden file input
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -226,12 +231,23 @@ export default function ProfilePage() {
     return url;
   };
 
-  // Save changes to state and localStorage
-  const handleSaveChanges = () => {
+  // Save changes to state, localStorage, and backend
+  const handleSaveChanges = async () => {
     if (editFormData) {
       setUserData(editFormData);
       localStorage.setItem("playSphereUser", JSON.stringify(editFormData));
       setIsEditing(false);
+
+      try {
+        await authService.updateProfile({
+          name: editFormData.name,
+          phone: editFormData.phone,
+          bio: editFormData.bio,
+          imageUrl: editFormData.profilePhoto
+        });
+      } catch (err) {
+        console.error("Failed to save profile to backend", err);
+      }
     }
   };
 
@@ -246,6 +262,33 @@ export default function ProfilePage() {
 
   // Determine which data to display based on whether we are in edit mode
   const displayData = isEditing && editFormData ? editFormData : userData;
+
+  const upcomingBookings = bookings.filter(b => {
+    const now = new Date();
+    if (b.slots && b.slots.length > 0) {
+      let isFuture = false;
+      const d = new Date(b.date);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      for (const slot of b.slots) {
+        const parts = slot.split(" - ");
+        const endTimeStr = parts.length > 1 ? parts[1].trim() : null;
+        if (endTimeStr) {
+          const slotEndDate = new Date(`${dateStr}T${endTimeStr}:00`);
+          if (slotEndDate > now) {
+            isFuture = true;
+            break;
+          }
+        }
+      }
+      return isFuture;
+    } else {
+      const bookingDateEnd = new Date(b.date);
+      bookingDateEnd.setHours(23, 59, 59, 999);
+      return bookingDateEnd > now;
+    }
+  });
+
+  const totalSpent = bookings.reduce((sum, b) => sum + (b.total || 0), 0);
 
   return (
     <div className="bg-[#f8f9ff] text-[#0b1c30] font-sans min-h-screen pb-6 md:pb-0 antialiased">
@@ -269,16 +312,18 @@ export default function ProfilePage() {
           <div className="md:col-span-4 flex flex-col gap-6">
             
             {/* User Identity Card */}
-            <div className="bg-white rounded-2xl border border-[#c3c5d9] p-6 shadow-[0_4px_20px_rgba(11,28,48,0.05)] relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#dce9ff] to-transparent opacity-50 z-0"></div>
-              <div className="relative z-10 flex flex-col items-center text-center">
+            <div className="bg-white rounded-[2rem] border border-[#e5eeff] shadow-[0_8px_30px_rgba(11,28,48,0.04)] relative overflow-hidden group">
+              {/* Cover Banner */}
+              <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-r from-[#003ec7] to-[#1a56e0] z-0"></div>
+              
+              <div className="relative z-10 flex flex-col items-center text-center px-6 pt-12 pb-8 mt-4">
                 
                 {/* Profile Photo Area */}
-                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white bg-[#e5eeff] shadow-md mb-4 relative flex items-center justify-center group/avatar">
+                <div className="w-32 h-32 rounded-full overflow-hidden border-[6px] border-white bg-white shadow-lg mb-5 relative flex items-center justify-center group/avatar">
                   {displayData.profilePhoto ? (
                     <img src={getProfileImageUrl(displayData.profilePhoto)} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-[#e5eeff] text-[#003ec7] font-bold text-3xl">
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#e5eeff] to-[#dce9ff] text-[#003ec7] font-bold text-4xl">
                       {getInitials(displayData.name)}
                     </div>
                   )}
@@ -287,7 +332,7 @@ export default function ProfilePage() {
                     <>
                       <button 
                         onClick={() => fileInputRef.current?.click()}
-                        className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover/avatar:opacity-100 transition-opacity"
+                        className="absolute inset-0 bg-black/50 flex items-center justify-center text-white opacity-0 group-hover/avatar:opacity-100 transition-opacity backdrop-blur-[2px]"
                       >
                         <Pencil className="w-6 h-6" />
                       </button>
@@ -304,93 +349,104 @@ export default function ProfilePage() {
 
                 {/* Name & Bio */}
                 {isEditing ? (
-                  <div className="w-full space-y-3 mb-6">
-                    <input 
-                      type="text"
-                      name="name"
-                      value={editFormData?.name || ""}
-                      onChange={handleInputChange}
-                      className="w-full text-center text-xl font-bold font-serif text-[#0b1c30] border-b-2 border-[#003ec7] focus:outline-none bg-transparent pb-1"
-                      placeholder="Your Name"
-                    />
-                    <textarea 
-                      name="bio"
-                      value={editFormData?.bio || ""}
-                      onChange={handleInputChange}
-                      className="w-full text-center text-sm text-[#434656] border-2 border-[#c3c5d9] focus:border-[#003ec7] rounded-lg p-2 focus:outline-none resize-none bg-white/50"
-                      rows={2}
-                      placeholder="Write a short bio..."
-                    />
+                  <div className="w-full space-y-4 mb-8">
+                    <div className="relative">
+                      <User className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-[#737688]" />
+                      <input 
+                        type="text"
+                        name="name"
+                        value={editFormData?.name || ""}
+                        onChange={handleInputChange}
+                        className="w-full pl-12 pr-4 py-3.5 text-sm font-semibold text-[#0b1c30] border border-[#c3c5d9] focus:border-[#003ec7] rounded-xl focus:outline-none focus:ring-4 focus:ring-[#003ec7]/10 transition-all bg-[#f8f9ff]"
+                        placeholder="Your Name"
+                      />
+                    </div>
+                    <div className="relative">
+                      <Pencil className="w-5 h-5 absolute left-4 top-3.5 text-[#737688]" />
+                      <textarea 
+                        name="bio"
+                        value={editFormData?.bio || ""}
+                        onChange={handleInputChange}
+                        className="w-full pl-12 pr-4 py-3.5 text-sm font-medium text-[#434656] border border-[#c3c5d9] focus:border-[#003ec7] rounded-xl focus:outline-none focus:ring-4 focus:ring-[#003ec7]/10 transition-all bg-[#f8f9ff] resize-none"
+                        rows={2}
+                        placeholder="Write a short bio..."
+                      />
+                    </div>
                   </div>
                 ) : (
                   <>
-                    <h1 className="text-2xl font-bold font-serif text-[#0b1c30] mb-1">{userData.name}</h1>
-                    <p className="text-base text-[#434656] mb-6">{userData.bio}</p>
+                    <h1 className="text-2xl font-bold font-serif text-[#0b1c30] mb-2">{userData.name}</h1>
+                    <p className="text-[11px] font-bold text-[#003ec7] uppercase tracking-widest mb-3 bg-[#e5eeff] px-3 py-1 rounded-full">Athlete</p>
+                    <p className="text-sm text-[#434656] mb-8 leading-relaxed max-w-[250px]">{userData.bio}</p>
                   </>
                 )}
                 
                 {/* Stats */}
-                <div className="w-full flex justify-around border-t border-[#c3c5d9] pt-4 mt-2">
-                  <div className="text-center">
-                    <span className="block text-2xl font-bold font-serif text-[#003ec7]">{userData.bookingsCount}</span>
-                    <span className="text-xs font-medium text-[#434656] uppercase tracking-wider">Bookings</span>
+                <div className="w-full grid grid-cols-2 gap-4 border-t border-[#f0f4ff] pt-6">
+                  <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-[#f8f9ff] hover:bg-[#e5eeff] transition-colors">
+                    <div className="w-8 h-8 rounded-full bg-[#003ec7]/10 flex items-center justify-center mb-2">
+                       <Calendar className="w-4 h-4 text-[#003ec7]" />
+                    </div>
+                    <span className="block text-2xl font-black text-[#0b1c30]">{upcomingBookings.length}</span>
+                    <span className="text-[10px] font-bold text-[#737688] uppercase tracking-widest mt-1">Upcoming</span>
                   </div>
-                  <div className="text-center border-l border-[#c3c5d9] pl-4">
-                    <span className="block text-2xl font-bold font-serif text-[#003ec7]">{userData.tournamentsCount}</span>
-                    <span className="text-xs font-medium text-[#434656] uppercase tracking-wider">Tournaments</span>
+                  <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-[#f8f9ff] hover:bg-[#e5eeff] transition-colors">
+                    <div className="w-8 h-8 rounded-full bg-[#003ec7]/10 flex items-center justify-center mb-2">
+                       <CreditCard className="w-4 h-4 text-[#003ec7]" />
+                    </div>
+                    <span className="block text-2xl font-black text-[#0b1c30]">₹{totalSpent.toLocaleString('en-IN')}</span>
+                    <span className="text-[10px] font-bold text-[#737688] uppercase tracking-widest mt-1">Total Spent</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Contact Info Card */}
-            <div className="bg-white rounded-2xl border border-[#c3c5d9] p-6 shadow-[0_4px_20px_rgba(11,28,48,0.05)]">
-              <h2 className="text-xl font-bold font-serif text-[#0b1c30] mb-4">Contact Info</h2>
-              <ul className="flex flex-col gap-4">
-                {/* Email (Read-only even in edit mode usually, but made editable for completeness) */}
-                <li className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-[#737688] shrink-0" />
-                  {isEditing ? (
-                    <input type="email" name="email" value={editFormData?.email || ""} onChange={handleInputChange} className="flex-1 text-sm border-b border-[#c3c5d9] focus:border-[#003ec7] focus:outline-none bg-transparent pb-1" />
-                  ) : (
-                    <span className="text-base truncate">{userData.email}</span>
-                  )}
+            <div className="bg-white rounded-[2rem] border border-[#e5eeff] p-6 sm:p-8 shadow-[0_8px_30px_rgba(11,28,48,0.04)]">
+              <h2 className="text-lg font-bold text-[#0b1c30] mb-6 flex items-center gap-2">
+                 <User className="w-5 h-5 text-[#003ec7]" /> Contact Info
+              </h2>
+              <ul className="flex flex-col gap-5">
+                {/* Email (Read-only) */}
+                <li className="flex items-center gap-4 group">
+                  <div className="w-11 h-11 rounded-xl bg-[#f8f9ff] flex items-center justify-center text-[#737688] group-hover:bg-[#e5eeff] group-hover:text-[#003ec7] transition-colors shrink-0">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold text-[#737688] uppercase tracking-wider mb-0.5">Email Address</p>
+                    <span className="text-sm font-semibold text-[#0b1c30] block truncate">{displayData.email}</span>
+                  </div>
                 </li>
                 
                 {/* Phone */}
-                <li className="flex items-center gap-3">
-                  <Phone className="w-5 h-5 text-[#737688] shrink-0" />
-                  {isEditing ? (
-                    <input type="text" name="phone" value={editFormData?.phone || ""} onChange={handleInputChange} className="flex-1 text-sm border-b border-[#c3c5d9] focus:border-[#003ec7] focus:outline-none bg-transparent pb-1" />
-                  ) : (
-                    <span className="text-base">{userData.phone}</span>
-                  )}
-                </li>
-                
-                {/* Location */}
-                <li className="flex items-center gap-3">
-                  <MapPin className="w-5 h-5 text-[#737688] shrink-0" />
-                  {isEditing ? (
-                    <input type="text" name="location" value={editFormData?.location || ""} onChange={handleInputChange} className="flex-1 text-sm border-b border-[#c3c5d9] focus:border-[#003ec7] focus:outline-none bg-transparent pb-1" />
-                  ) : (
-                    <span className="text-base">{userData.location}</span>
-                  )}
+                <li className="flex items-center gap-4 group">
+                  <div className="w-11 h-11 rounded-xl bg-[#f8f9ff] flex items-center justify-center text-[#737688] group-hover:bg-[#e5eeff] group-hover:text-[#003ec7] transition-colors shrink-0">
+                    <Phone className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold text-[#737688] uppercase tracking-wider mb-0.5">Phone Number</p>
+                    {isEditing ? (
+                      <input type="text" name="phone" value={editFormData?.phone || ""} onChange={handleInputChange} className="w-full text-sm font-semibold text-[#0b1c30] border-b-2 border-[#003ec7] focus:outline-none bg-transparent py-1" />
+                    ) : (
+                      <span className="text-sm font-semibold text-[#0b1c30]">{displayData.phone}</span>
+                    )}
+                  </div>
                 </li>
               </ul>
 
               {/* Edit / Save Action Buttons */}
-              <div className="mt-6 flex gap-3">
+              <div className="mt-8 flex gap-3">
                 {isEditing ? (
                   <>
                     <button 
                       onClick={handleSaveChanges}
-                      className="flex-1 bg-[#003ec7] text-white font-semibold text-sm py-3 px-4 rounded-lg hover:bg-[#0038b6] transition-colors flex items-center justify-center gap-2"
+                      className="flex-1 bg-[#003ec7] text-white font-bold text-sm py-3 px-4 rounded-xl hover:bg-[#0038b6] hover:shadow-lg hover:shadow-[#003ec7]/30 transition-all flex items-center justify-center gap-2"
                     >
                       <Check className="w-4 h-4" /> Save
                     </button>
                     <button 
                       onClick={handleEditToggle}
-                      className="flex-1 border-2 border-[#c3c5d9] text-[#434656] font-semibold text-sm py-3 px-4 rounded-lg hover:bg-[#f8f9ff] transition-colors flex items-center justify-center gap-2"
+                      className="flex-1 bg-[#f8f9ff] text-[#434656] font-bold text-sm py-3 px-4 rounded-xl hover:bg-[#e5eeff] hover:text-[#003ec7] transition-all flex items-center justify-center gap-2"
                     >
                       <X className="w-4 h-4" /> Cancel
                     </button>
@@ -398,9 +454,9 @@ export default function ProfilePage() {
                 ) : (
                   <button 
                     onClick={handleEditToggle}
-                    className="w-full border-2 border-[#003ec7] text-[#003ec7] font-semibold text-base py-3 px-6 rounded-lg hover:bg-[#dce9ff]/50 transition-colors"
+                    className="w-full bg-[#f8f9ff] text-[#003ec7] font-bold text-sm py-3.5 px-6 rounded-xl hover:bg-[#e5eeff] transition-colors flex items-center justify-center gap-2"
                   >
-                    Edit Profile
+                    <Pencil className="w-4 h-4" /> Edit Profile
                   </button>
                 )}
               </div>
@@ -409,11 +465,11 @@ export default function ProfilePage() {
             {/* Dynamic Logout Button (Hide when editing to avoid accidental clicks) */}
             {!isEditing && (
               <button 
-                onClick={handleLogout}
-                className="w-full bg-[#ffdad6] text-[#93000a] font-semibold text-base py-3 px-6 rounded-lg hover:bg-[#ba1a1a] hover:text-white transition-colors flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
+                onClick={() => setShowLogoutConfirm(true)}
+                className="w-full bg-[#fff1f0] text-[#e11d48] font-bold text-sm py-3.5 px-6 rounded-xl hover:bg-[#ffe4e1] transition-colors flex items-center justify-center gap-2"
               >
-                <LogOut className="w-5 h-5" />
-                Logout
+                <LogOut className="w-4 h-4" />
+                Sign Out
               </button>
             )}
           </div>
@@ -426,56 +482,127 @@ export default function ProfilePage() {
                 title="Upcoming Bookings"
                 className="mb-6"
                 actions={
-                  <Link href="#" className="text-[#003ec7] font-semibold text-sm hover:underline">
-                    View All
-                  </Link>
+                  upcomingBookings.length > 2 && (
+                    <button 
+                      onClick={() => setShowAllBookings(!showAllBookings)}
+                      className="text-[#003ec7] font-semibold text-sm hover:underline focus:outline-none"
+                    >
+                      {showAllBookings ? "Show Less" : "View All"}
+                    </button>
+                  )
                 }
               />
               
-              <div className="flex flex-col gap-4">
-                {bookings.filter(b => {
-                  const bookingDate = new Date(b.date);
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  return bookingDate >= today;
-                }).length > 0 ? (
-                  bookings.filter(b => {
-                    const bookingDate = new Date(b.date);
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    return bookingDate >= today;
-                  }).map((booking, idx) => (
-                    <div key={idx} className="bg-white rounded-2xl border border-[#c3c5d9] p-0 shadow-[0_4px_20px_rgba(11,28,48,0.05)] hover:shadow-[0_12px_32px_rgba(11,28,48,0.12)] transition-shadow hover:-translate-y-1 transform duration-200 overflow-hidden flex flex-col sm:flex-row">
-                      <div className="sm:w-1/3 h-48 sm:h-auto relative bg-[#e5eeff] flex items-center justify-center">
-                        <Trophy className="w-12 h-12 text-[#003ec7] opacity-20 absolute" />
-                        <div className="absolute top-3 left-3 bg-[#003ec7] text-white text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide">
-                          {booking.type === "turf" ? booking.sportOrCategory : "Event"}
+              <div className={`flex flex-col gap-4 ${showAllBookings ? 'max-h-[500px] overflow-y-auto pr-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-[#f0f4ff] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#003ec7]/80 hover:[&::-webkit-scrollbar-thumb]:bg-[#003ec7] [&::-webkit-scrollbar-thumb]:rounded-full transition-all' : ''}`}>
+                {(() => {
+                  const visibleBookings = showAllBookings ? upcomingBookings : upcomingBookings.slice(0, 2);
+
+                  return upcomingBookings.length > 0 ? (
+                    visibleBookings.map((booking, idx) => (
+                      <div key={idx} className="bg-white rounded-[2rem] border border-[#e5eeff] shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:border-[#dce9ff] transition-all hover:-translate-y-1 duration-300 overflow-hidden flex flex-col sm:flex-row shrink-0 group">
+                        <div className="sm:w-2/5 h-48 sm:h-auto relative bg-gradient-to-br from-[#f0f4ff] to-[#e5eeff] flex flex-col items-center justify-center p-0 overflow-hidden">
+                          <div className="absolute inset-0 bg-[#003ec7] opacity-0 group-hover:opacity-10 transition-opacity duration-500 z-20"></div>
+                          {booking.imageUrl ? (
+                            <img src={booking.imageUrl} alt={booking.itemName} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          ) : (
+                            <>
+                              {booking.type === "turf" ? (
+                                 <Trophy className="w-24 h-24 text-[#003ec7] opacity-10 absolute -right-4 -bottom-4 transform -rotate-12 group-hover:scale-110 transition-transform duration-500" />
+                              ) : (
+                                 <Calendar className="w-24 h-24 text-[#003ec7] opacity-10 absolute -right-4 -bottom-4 transform -rotate-12 group-hover:scale-110 transition-transform duration-500" />
+                              )}
+                              <div className="relative z-10 w-16 h-16 rounded-2xl bg-white shadow-md flex items-center justify-center mb-4 text-[#003ec7]">
+                                 {booking.type === "turf" ? <Trophy className="w-8 h-8" /> : <Calendar className="w-8 h-8" />}
+                              </div>
+                            </>
+                          )}
+                          <span className="absolute bottom-4 left-4 z-20 bg-white/90 backdrop-blur-md text-[#003ec7] text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest shadow-sm">
+                            {booking.type === "turf" ? booking.sportOrCategory : "Event"}
+                          </span>
+                        </div>
+                        <div className="p-6 sm:p-8 flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-4 gap-2">
+                              <h3 className="text-xl font-bold font-serif text-[#0b1c30] group-hover:text-[#003ec7] transition-colors">{booking.itemName}</h3>
+                              <span className="bg-[#f0f4ff] text-[#003ec7] text-[10px] font-bold px-3 py-1.5 rounded-lg uppercase tracking-wider whitespace-nowrap self-start">
+                                {new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-8 h-8 rounded-full bg-[#f8f9ff] flex items-center justify-center shrink-0">
+                                 <Calendar className="w-4 h-4 text-[#737688]" />
+                              </div>
+                              <p className="text-sm font-semibold text-[#434656]">
+                                {new Date(booking.date).toLocaleDateString('en-US', { weekday: 'long' })}
+                                {booking.slots?.length ? ` • ${booking.slots.join(", ")}` : ""}
+                              </p>
+                            </div>
+                            
+                            <div className="flex items-start gap-3 mb-6">
+                              <div className="w-8 h-8 rounded-full bg-[#f8f9ff] flex items-center justify-center shrink-0 mt-0.5">
+                                 <MapPin className="w-4 h-4 text-[#737688]" />
+                              </div>
+                              <p className="text-sm font-medium text-[#737688] leading-relaxed">{booking.location}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-6 border-t border-[#f0f4ff]">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-bold text-[#737688] uppercase tracking-widest mb-0.5">Total Paid</span>
+                              <span className="text-lg font-black text-[#0b1c30]">₹{booking.total}</span>
+                            </div>
+                            <Link href={`/booking-success?booking_id=${booking.bookingId || (booking as any).id}`} className="bg-[#003ec7] hover:bg-[#0038b6] hover:shadow-lg hover:shadow-[#003ec7]/30 transition-all text-white font-bold text-sm py-3 px-6 rounded-xl flex items-center justify-center gap-2 group/btn">
+                              View Ticket <ArrowLeft className="w-4 h-4 rotate-180 transform group-hover/btn:translate-x-1 transition-transform" />
+                            </Link>
+                          </div>
                         </div>
                       </div>
-                      <div className="p-6 flex-1 flex flex-col justify-between">
-                        <div>
-                          <h3 className="text-xl font-bold font-serif text-[#0b1c30] mb-1">{booking.itemName}</h3>
-                          <p className="text-[#434656] text-base flex items-center gap-1.5 mb-4">
-                            <Calendar className="w-4 h-4" /> {new Date(booking.date).toLocaleDateString()}{booking.slots?.length ? ` • ${booking.slots.join(", ")}` : ""}
-                          </p>
-                          <p className="text-sm text-[#434656]">{booking.location}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Link href={`/booking-success?booking_id=${booking.bookingId || (booking as any).id}`} className="bg-[#003ec7] hover:bg-[#0038b6] transition-colors text-white font-semibold text-sm py-2 px-4 rounded-lg flex-1 text-center flex items-center justify-center">View</Link>
-                        </div>
+                    ))
+                  ) : (
+                    <div className="bg-white rounded-[2rem] border border-[#e5eeff] p-12 text-center flex flex-col items-center justify-center">
+                      <div className="w-16 h-16 bg-[#f0f4ff] rounded-2xl flex items-center justify-center mb-4">
+                        <Calendar className="w-8 h-8 text-[#003ec7] opacity-50" />
                       </div>
+                      <h3 className="text-lg font-bold text-[#0b1c30] mb-2">No upcoming bookings</h3>
+                      <p className="text-[#434656]">You do not have any upcoming bookings at the moment.</p>
+                      <Link href="/" className="mt-6 inline-flex items-center gap-2 bg-[#003ec7] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#002a8f] transition-colors">
+                        Explore Venues
+                      </Link>
                     </div>
-                  ))
-                ) : (
-                  <div className="bg-white rounded-2xl border border-[#c3c5d9] p-6 shadow-[0_4px_20px_rgba(11,28,48,0.05)] text-center">
-                    <p className="text-[#434656]">You have no upcoming bookings yet. Book a turf or event to see it here.</p>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             </section>
           </div>
         </div>
       </PageContainer>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0b1c30]/40">
+          <div className="bg-white p-6 rounded-3xl shadow-2xl flex flex-col gap-3 min-w-[320px] transform transition-all animate-in fade-in zoom-in duration-200">
+            <h3 className="font-bold text-xl text-[#0b1c30]">Confirm Logout</h3>
+            <p className="text-[#434656] text-sm mb-4">Are you sure you want to log out of PlaySphere?</p>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setShowLogoutConfirm(false)}
+                className="px-5 py-2.5 text-sm font-bold rounded-xl text-[#434656] bg-[#f4f7fb] hover:bg-[#e5eeff] hover:text-[#003ec7] transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  handleLogout();
+                }}
+                className="px-5 py-2.5 text-sm font-bold rounded-xl bg-[#ffdad6] text-[#93000a] hover:bg-[#ba1a1a] hover:text-white transition-colors"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

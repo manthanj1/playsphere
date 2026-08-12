@@ -180,7 +180,7 @@ export default function SportsListingPage() {
 
                   <div className="flex items-center gap-1.5 text-[#003ec7] text-sm font-medium mb-auto pb-4">
                     <Clock className="w-4 h-4" />
-                    {turf.availability}
+                    {turf.availability || "Open 24/7"}
                   </div>
 
                   <div className="flex items-center justify-between pt-4 border-t border-[#eff4ff]">
@@ -193,7 +193,7 @@ export default function SportsListingPage() {
 
                     <Link
                       href={`/turf/${turf.id}`}
-                      className="bg-[#e5eeff] hover:bg-[#003ec7] text-[#003ec7] hover:text-white transition-colors duration-200 px-6 py-2.5 rounded-lg font-semibold text-sm inline-flex items-center justify-center"
+                      className="bg-[#003ec7] hover:bg-[#002f96] text-white transition-colors duration-200 px-6 py-2.5 rounded-lg font-semibold text-sm inline-flex items-center justify-center shadow-sm hover:shadow-md"
                     >
                       Book Now
                     </Link>

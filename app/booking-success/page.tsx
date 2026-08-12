@@ -160,7 +160,7 @@ function BookingSuccessContent() {
                 </div>
                 <div>
                   <p className="text-[#737688] text-[10px] font-bold uppercase tracking-widest mb-0.5">Time</p>
-                  <p className="text-[#0b1c30] font-semibold text-sm">{booking.slots[0]}</p>
+                  <p className="text-[#0b1c30] font-semibold text-sm">{booking.slots.join(", ")}</p>
                 </div>
               </div>
             )}

@@ -97,7 +97,7 @@ export default function EventDetailsPage() {
     if (!tier) return;
 
     const amount = tier.price * quantity;
-    const platformFee = 25 * quantity;
+    const platformFee = 40;
     const total = amount + platformFee;
 
     const bookingPayload = {
@@ -183,29 +183,33 @@ export default function EventDetailsPage() {
                 {event.title}
               </h1>
 
-              <div className="flex flex-col gap-3 mb-6 bg-white p-5 rounded-2xl border border-[#e5eeff]">
-                <div className="flex items-center gap-3 text-[#434656]">
-                  <Calendar className="w-5 h-5 text-[#003ec7]" />
-                  <span className="font-semibold text-lg">{bookingDate}</span>
+              <div className="flex flex-col gap-6 mb-6 bg-white p-6 rounded-2xl border border-[#e5eeff]">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-3 text-[#434656]">
+                    <Calendar className="w-5 h-5 text-[#003ec7]" />
+                    <span className="font-semibold text-lg">{bookingDate}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-[#434656]">
+                    <MapPin className="w-5 h-5 text-[#003ec7]" />
+                    <span className="font-semibold text-lg">{event.location ?? event.city ?? "Unknown location"}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-[#434656]">
+                    <User className="w-5 h-5 text-[#003ec7]" />
+                    <span className="font-semibold text-lg">{event.host?.name ?? "PlaySphere Admin"}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-[#434656]">
-                  <MapPin className="w-5 h-5 text-[#003ec7]" />
-                  <span className="font-semibold text-lg">{event.location ?? event.city ?? "Unknown location"}</span>
-                </div>
-                <div className="flex items-center gap-3 text-[#434656]">
-                  <User className="w-5 h-5 text-[#003ec7]" />
-                  <span className="font-semibold text-lg">{event.host?.name ?? "PlaySphere Admin"}</span>
-                </div>
-              </div>
 
-              <div className="space-y-4">
-                <h3 className="text-xl font-bold flex items-center gap-2">
-                  <Info className="w-5 h-5 text-[#003ec7]" />
-                  About the Event
-                </h3>
-                <p className="text-[#434656] leading-relaxed text-lg">
-                  {event.description ?? "No description available for this event yet."}
-                </p>
+                <div className="h-px w-full bg-[#e5eeff]" />
+
+                <div className="space-y-3">
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-[#0b1c30]">
+                    <Info className="w-5 h-5 text-[#003ec7]" />
+                    About the Event
+                  </h3>
+                  <p className="text-[#434656] leading-relaxed text-base md:text-lg">
+                    {event.description ?? "No description available for this event yet."}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -285,12 +289,28 @@ export default function EventDetailsPage() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-between mb-6 px-2">
-                <span className="text-[#434656] font-medium">Total Amount</span>
-                <span className="text-2xl font-black text-[#003ec7]">
-                  ₹{selectedTier ? (eventTiers.find(t => t.id === selectedTier)?.price || 0) * quantity + (25 * quantity) : 0}
-                </span>
-              </div>
+              {selectedTier && (
+                <div className="bg-[#f8f9ff] p-4 rounded-xl border border-[#e5eeff] mb-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[#434656] font-medium text-sm">
+                      {quantity} Ticket{quantity !== 1 ? "s" : ""} × ₹{eventTiers.find(t => t.id === selectedTier)?.price || 0}
+                    </span>
+                    <span className="text-[#0b1c30] font-bold">
+                      ₹{(eventTiers.find(t => t.id === selectedTier)?.price || 0) * quantity}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[#434656] font-medium text-sm">Platform Fee</span>
+                    <span className="text-[#0b1c30] font-bold">₹40</span>
+                  </div>
+                  <div className="border-t border-[#c3c5d9] pt-2 mt-2 flex justify-between items-center">
+                    <span className="text-[#0b1c30] font-bold">Total Amount</span>
+                    <span className="text-[#003ec7] font-extrabold text-xl">
+                      ₹{(eventTiers.find(t => t.id === selectedTier)?.price || 0) * quantity + 40}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={handleProceedToPayment}

@@ -155,10 +155,11 @@ interface SlotButtonProps {
   slot: string;
   isSelected: boolean;
   isBooked: boolean;
+  isPassed: boolean;
   onClick: () => void;
 }
 
-function SlotButton({ slot, isSelected, isBooked, onClick }: SlotButtonProps) {
+function SlotButton({ slot, isSelected, isBooked, isPassed, onClick }: SlotButtonProps) {
   if (isBooked) {
     return (
       <div className="relative py-2.5 px-2 text-sm font-semibold rounded-lg border bg-[#fdf6f6] border-[#f0dede] text-[#c4a4a4] cursor-not-allowed flex items-center justify-center">
@@ -166,6 +167,14 @@ function SlotButton({ slot, isSelected, isBooked, onClick }: SlotButtonProps) {
         <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#fee2e2] text-[#b91c1c] text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide whitespace-nowrap">
           Booked
         </span>
+      </div>
+    );
+  }
+
+  if (isPassed) {
+    return (
+      <div className="relative py-2.5 px-2 text-sm font-semibold rounded-lg border bg-[#f4f6fb] border-[#e2e8f0] text-[#aab0c8] cursor-not-allowed flex items-center justify-center">
+        {slot}
       </div>
     );
   }
@@ -611,13 +620,26 @@ export default function NetSelectionPage() {
                     {ALL_TIME_SLOTS.map((slot) => {
                       const isBooked = selectedNet.bookedSlots.includes(slot);
                       const isSelected = selectedSlots.includes(slot);
+
+                      let isPassed = false;
+                      if (booking?.bookingDate) {
+                        const now = new Date();
+                        const slotStartTimeStr = slot.split(" - ")[0];
+                        const slotStartDate = new Date(`${booking.bookingDate}T${slotStartTimeStr}:00`);
+                        
+                        // Block if current time is less than or equal to 1 hour (3600000 ms) before the slot starts.
+                        const diff = slotStartDate.getTime() - now.getTime();
+                        isPassed = diff <= 3600000;
+                      }
+
                       return (
                         <SlotButton
                           key={slot}
                           slot={slot}
                           isSelected={isSelected}
                           isBooked={isBooked}
-                          onClick={() => !isBooked && toggleSlot(slot)}
+                          isPassed={isPassed}
+                          onClick={() => !isBooked && !isPassed && toggleSlot(slot)}
                         />
                       );
                     })}

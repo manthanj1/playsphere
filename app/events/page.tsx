@@ -37,6 +37,7 @@ interface BackendEventItem {
   description?: string;
   city?: string;
   date: string;
+  price?: number;
   image?: string;
   host?: {
     name?: string;
@@ -73,7 +74,7 @@ export default function EntertainmentEventsPage() {
             year: 'numeric',
           }),
           location: event.city ? `${event.city} Arena` : 'Unknown location',
-          startingPrice: 499 + (index % 5) * 300,
+          startingPrice: event.price || 499,
           image: event.image || `/images/placeholders/image-${8 + parseInt(event.id.split('-')[1] || "1")}.jpg?v=3`,
           hostName: event.host?.name,
         }));

@@ -13,6 +13,8 @@ export interface TurfItem {
   availability: string;
   description?: string;
   amenities?: string[];
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface TurfsResponse {

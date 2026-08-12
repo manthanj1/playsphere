@@ -156,7 +156,7 @@ export default function PaymentPage() {
           color: "#003ec7"
         },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             setIsSubmitting(false);
           }
         }
@@ -170,7 +170,7 @@ export default function PaymentPage() {
       rzp.open();
     } catch (err: any) {
       if (err.message?.toLowerCase().includes("no longer available") ||
-          err.message?.toLowerCase().includes("slot")) {
+        err.message?.toLowerCase().includes("slot")) {
         setError("This slot is no longer available — another user just booked it. Please go back and choose a different net or time.");
       } else {
         setError(err.message || "Payment initialization failed. Please try again.");
@@ -199,16 +199,17 @@ export default function PaymentPage() {
   return (
     <div className="bg-[#f4f7fb] min-h-screen text-[#0b1c30] font-sans antialiased pb-12">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
-      
+
       {/* Premium Header */}
       <header className="bg-white/80 backdrop-blur-xl border-b border-[#e5eeff] sticky top-0 z-50 transition-all shadow-sm">
-        <div className="max-w-[800px] mx-auto px-4 py-4 flex items-center justify-between">
-          <button
-            onClick={() => router.back()}
-            className="p-2 hover:bg-[#f0f4ff] rounded-full transition-colors -ml-2 group"
-          >
-            <ArrowLeft className="w-5 h-5 text-[#434656] group-hover:text-[#003ec7]" />
-          </button>
+        <div className="max-w-[1200px] mx-auto px-4 py-4 flex items-center justify-between">
+            <button
+              onClick={() => router.back()}
+              className="inline-flex items-center gap-2 text-[#434656] hover:text-[#003ec7] font-medium transition-colors -ml-2"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Back to Booking
+            </button>
           <h1 className="text-xl font-bold font-serif text-[#0b1c30] tracking-tight">Complete Payment</h1>
           <div className="w-10 h-10 flex items-center justify-center bg-[#f0f4ff] rounded-full">
             <ShieldCheck className="w-5 h-5 text-[#003ec7]" />
@@ -216,11 +217,60 @@ export default function PaymentPage() {
         </div>
       </header>
 
-      <main className="max-w-[500px] mx-auto px-4 py-10 relative">
-        {/* Background ambient glow */}
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-[#003ec7]/10 blur-3xl -z-10 rounded-full" />
+      <main className="max-w-[1200px] mx-auto px-4 py-10 md:py-16 relative">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+          
+          {/* Left Column: Branding & Trust */}
+          <div className="flex flex-col justify-center lg:pr-8">
+            <div className="inline-block mb-4 px-3 py-1 bg-[#e5eeff] text-[#003ec7] text-sm font-bold uppercase tracking-wider rounded-full self-start">
+              Final Step
+            </div>
+            <h2 className="text-4xl lg:text-6xl font-extrabold font-serif text-[#0b1c30] leading-tight mb-6">
+              You're almost on the pitch!
+            </h2>
+            <p className="text-[#434656] text-lg lg:text-xl mb-12 leading-relaxed">
+              Review your details and complete your payment to secure your spot. We guarantee a seamless experience with zero hidden fees.
+            </p>
+            
+            <div className="space-y-8">
+              <div className="flex items-start gap-5">
+                <div className="w-14 h-14 bg-[#e5eeff] text-[#003ec7] rounded-2xl flex items-center justify-center shrink-0 shadow-sm border border-white">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-[#0b1c30] font-bold text-xl mb-1">Instant Confirmation</h3>
+                  <p className="text-[#737688] text-base leading-relaxed">Your booking is secured the moment your payment goes through.</p>
+                </div>
+              </div>
 
-        <div className="bg-white border border-[#eef2f9] rounded-[2rem] p-7 md:p-8 shadow-[0_24px_48px_rgba(11,28,48,0.03)] relative overflow-hidden">
+              <div className="flex items-start gap-5">
+                <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border border-white">
+                  <ShieldCheck className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-[#0b1c30] font-bold text-xl mb-1">100% Secure Payment</h3>
+                  <p className="text-[#737688] text-base leading-relaxed">We use industry-standard encryption. Your details are never stored.</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-5">
+                <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border border-white">
+                  <Clock className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-[#0b1c30] font-bold text-xl mb-1">Quick & Easy</h3>
+                  <p className="text-[#737688] text-base leading-relaxed">Checkout in seconds. Spend more time playing and less time booking.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Checkout Card */}
+          <div className="relative">
+            {/* Background ambient glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[#003ec7]/10 blur-[100px] -z-10 rounded-full" />
+
+            <div className="bg-white/90 backdrop-blur-2xl border border-white/60 rounded-[2.5rem] p-8 md:p-10 shadow-[0_32px_80px_rgba(11,28,48,0.08)] relative overflow-hidden ring-1 ring-black/[0.02]">
           
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 rounded-2xl bg-[#f0f4ff] flex items-center justify-center shrink-0">
@@ -314,6 +364,8 @@ export default function PaymentPage() {
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
             <p className="text-xs font-medium uppercase tracking-wider">Payments are 100% secure & encrypted</p>
           </div>
+          </div>
+        </div>
         </div>
       </main>
     </div>
