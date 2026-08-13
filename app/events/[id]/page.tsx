@@ -285,7 +285,7 @@ export default function EventDetailsPage() {
               <div className="mb-6 flex items-start gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
                 <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                 <p className="text-sm text-red-700 font-medium leading-relaxed">
-                  Cancellations and refunds are not allowed for this event booking. Please confirm your details before proceeding.
+                  Cancelation will be done only 24 hrs before the booking time.
                 </p>
               </div>
 

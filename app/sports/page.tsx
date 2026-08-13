@@ -15,10 +15,19 @@ import {
   Star,
   Clock,
   Filter,
+  Users,
 } from "lucide-react";
 import { turfService, TurfItem } from "@/services/turfService";
 
 const categories = ["All", "Cricket", "Football", "Tennis", "Padel", "Multi-sport"];
+
+const getPlayerFormat = (sport: string) => {
+  const s = sport.toLowerCase();
+  if (s.includes("cricket")) return "6v6 Players";
+  if (s.includes("football")) return "5v5 Players";
+  if (s.includes("padel") || s.includes("tennis")) return "2v2 Players";
+  return "1-12 Players";
+};
 
 export default function SportsListingPage() {
   const router = useRouter();
@@ -109,7 +118,7 @@ export default function SportsListingPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
               </div>
             </div>
-            
+
             <SearchInput
               value={searchQuery}
               onChange={setSearchQuery}
@@ -128,11 +137,10 @@ export default function SportsListingPage() {
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
-              className={`whitespace-nowrap px-5 py-2 rounded-xl font-semibold text-sm transition-all duration-200 ${
-                activeCategory === category
+              className={`whitespace-nowrap px-5 py-2 rounded-xl font-semibold text-sm transition-all duration-200 ${activeCategory === category
                   ? "bg-[#003ec7] text-white shadow-md"
                   : "bg-white text-[#434656] border border-[#c3c5d9] hover:bg-[#e5eeff] hover:text-[#003ec7] hover:border-[#003ec7]"
-              }`}
+                }`}
             >
               {category}
             </button>
@@ -179,8 +187,10 @@ export default function SportsListingPage() {
                   </div>
 
                   <div className="flex items-center gap-1.5 text-[#003ec7] text-sm font-medium mb-auto pb-4">
-                    <Clock className="w-4 h-4" />
-                    {turf.availability || "Open 24/7"}
+                    <div className="bg-[#e5eeff] px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                      <Users className="w-4 h-4" />
+                      {getPlayerFormat(turf.sport)}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-4 border-t border-[#eff4ff]">

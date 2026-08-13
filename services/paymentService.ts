@@ -35,4 +35,7 @@ export const paymentService = {
     
   getBookings: () =>
     apiClient.get<BookingsListResponse>('/api/bookings'),
+    
+  cancelBooking: (bookingId: string) =>
+    apiClient.post<{ success: boolean; message: string }>(`/api/bookings/${bookingId}/cancel`, {}),
 };

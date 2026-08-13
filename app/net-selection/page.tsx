@@ -50,10 +50,28 @@ type NetStatus = "available" | "selected" | "rain-disabled" | "already-booked";
 function getNetStatus(
   net: NetData,
   selectedNetId: string | null,
-  isRainy: boolean
+  isRainy: boolean,
+  bookingDate: string | undefined
 ): NetStatus {
   if (net.id === selectedNetId) return "selected";
   if (net.areaType === "OUTDOOR" && isRainy) return "rain-disabled";
+
+  const allSlotsBookedOrPassed = ALL_TIME_SLOTS.every((slot) => {
+    if (net.bookedSlots.includes(slot)) return true;
+    
+    let isPassed = false;
+    if (bookingDate) {
+      const now = new Date();
+      const slotStartTimeStr = slot.split(" - ")[0];
+      const slotStartDate = new Date(`${bookingDate}T${slotStartTimeStr}:00`);
+      const diff = slotStartDate.getTime() - now.getTime();
+      isPassed = diff <= 3600000;
+    }
+    return isPassed;
+  });
+
+  if (allSlotsBookedOrPassed) return "already-booked";
+
   return "available";
 }
 
@@ -78,27 +96,27 @@ interface NetCardProps {
 }
 
 function NetCard({ net, status, onClick }: NetCardProps) {
-  const isDisabled = status === "rain-disabled";
+  const isDisabled = status === "rain-disabled" || status === "already-booked";
   const isSelected = status === "selected";
 
   const cardClass = [
     "relative rounded-2xl border-2 p-5 transition-all duration-200 flex flex-col gap-3",
     isSelected
       ? "border-[#003ec7] bg-[#003ec7] text-white shadow-lg shadow-[#003ec7]/25 scale-[1.02]"
-      : status === "rain-disabled"
+      : isDisabled
       ? "border-[#dde3f0] bg-[#f4f6fb] text-[#aab0c8] cursor-not-allowed"
       : "border-[#e5eeff] bg-white text-[#0b1c30] hover:border-[#003ec7] hover:shadow-md cursor-pointer",
   ].join(" ");
 
   const iconBgClass = isSelected
     ? "bg-white/20"
-    : status === "rain-disabled"
+    : isDisabled
     ? "bg-[#eaecf5]"
     : "bg-[#e5eeff]";
 
   const iconColorClass = isSelected
     ? "text-white"
-    : status === "rain-disabled"
+    : isDisabled
     ? "text-[#b0b8d4]"
     : "text-[#003ec7]";
 
@@ -138,6 +156,11 @@ function NetCard({ net, status, onClick }: NetCardProps) {
       {status === "rain-disabled" && (
         <span className="absolute top-3 right-3 bg-[#e0e7f5] text-[#6b7faa] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
           Blocked
+        </span>
+      )}
+      {status === "already-booked" && (
+        <span className="absolute top-3 right-3 bg-[#fdf6f6] text-[#c4a4a4] border border-[#f0dede] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+          Booked
         </span>
       )}
       {isSelected && (
@@ -517,7 +540,7 @@ export default function NetSelectionPage() {
                     <NetCard
                       key={net.id}
                       net={net}
-                      status={getNetStatus(net, selectedNetId, effectiveIsRainy)}
+                      status={getNetStatus(net, selectedNetId, effectiveIsRainy, booking?.bookingDate)}
                       onClick={() => handleNetClick(net)}
                     />
                   ))}
@@ -565,7 +588,7 @@ export default function NetSelectionPage() {
                     <NetCard
                       key={net.id}
                       net={net}
-                      status={getNetStatus(net, selectedNetId, effectiveIsRainy)}
+                      status={getNetStatus(net, selectedNetId, effectiveIsRainy, booking?.bookingDate)}
                       onClick={() => handleNetClick(net)}
                     />
                   ))}

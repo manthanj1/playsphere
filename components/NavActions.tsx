@@ -72,6 +72,8 @@ export default function NavActions() {
           const bookingRes = await paymentService.getBookings();
           const allBookings = bookingRes?.bookings || [];
           const upcomingBookings = allBookings.filter((b: any) => {
+            if (b.status === 'CANCELLED') return false;
+            
             const now = new Date();
             if (b.slots && b.slots.length > 0) {
               let isFuture = false;

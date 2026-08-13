@@ -152,8 +152,8 @@ export default function EntertainmentEventsPage() {
               key={category}
               onClick={() => setActiveCategory(category)}
               className={`whitespace-nowrap flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${activeCategory === category
-                  ? 'bg-[#0b1c30] text-white shadow-md'
-                  : 'bg-white text-[#434656] border border-[#e5eeff] hover:border-[#003ec7] hover:text-[#003ec7]'
+                ? 'bg-[#0b1c30] text-white shadow-md'
+                : 'bg-white text-[#434656] border border-[#e5eeff] hover:border-[#003ec7] hover:text-[#003ec7]'
                 }`}
             >
               <span>{category === 'All' ? 'All Cities' : category}</span>

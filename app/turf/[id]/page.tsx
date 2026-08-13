@@ -17,7 +17,29 @@ import {
   AlertCircle,
   CalendarDays,
   ChevronRight,
+  Users,
 } from "lucide-react";
+
+const ALL_TIME_SLOTS = [
+  "06:00 - 07:00",
+  "07:00 - 08:00",
+  "08:00 - 09:00",
+  "09:00 - 10:00",
+  "10:00 - 11:00",
+  "11:00 - 12:00",
+  "12:00 - 13:00",
+  "13:00 - 14:00",
+  "14:00 - 15:00",
+  "15:00 - 16:00",
+  "16:00 - 17:00",
+  "17:00 - 18:00",
+  "18:00 - 19:00",
+  "19:00 - 20:00",
+  "20:00 - 21:00",
+  "21:00 - 22:00",
+  "22:00 - 23:00",
+  "23:00 - 00:00",
+];
 
 const generateDates = () => {
   const dates = [];
@@ -35,6 +57,14 @@ const generateDates = () => {
   return dates;
 };
 
+const getPlayerFormat = (sport: string) => {
+  const s = sport.toLowerCase();
+  if (s.includes("cricket")) return "6v6 Players";
+  if (s.includes("football")) return "5v5 Players";
+  if (s.includes("padel") || s.includes("tennis")) return "2v2 Players";
+  return "1-12 Players";
+};
+
 export default function TurfDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -43,6 +73,7 @@ export default function TurfDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(0);
+  const [fullyBookedDates, setFullyBookedDates] = useState<Set<number>>(new Set());
 
   const dates = generateDates();
 
@@ -65,6 +96,62 @@ export default function TurfDetailPage() {
       }
     }
     loadTurf();
+  }, [turfId]);
+
+  useEffect(() => {
+    async function checkAvailability() {
+      if (!turfId) return;
+      const bookedSet = new Set<number>();
+      
+      await Promise.all(
+        dates.map(async (item, index) => {
+          const dateObj = item.date;
+          const rawDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
+          try {
+            const res = await turfService.getTurfNets(turfId as string, rawDate);
+            const nets = res?.nets || [];
+            const isRainy = res?.isRainy || false;
+            
+            if (nets.length > 0) {
+              const allNetsUnavailable = nets.every((net: any) => {
+                if (net.areaType === "OUTDOOR" && isRainy) return true;
+                
+                return ALL_TIME_SLOTS.every(slot => {
+                  if (net.bookedSlots.includes(slot)) return true;
+                  let isPassed = false;
+                  const now = new Date();
+                  const slotStartTimeStr = slot.split(" - ")[0];
+                  const slotStartDate = new Date(`${rawDate}T${slotStartTimeStr}:00`);
+                  const diff = slotStartDate.getTime() - now.getTime();
+                  isPassed = diff <= 3600000;
+                  return isPassed;
+                });
+              });
+
+              if (allNetsUnavailable) {
+                bookedSet.add(index);
+              }
+            }
+          } catch (e) {
+            console.error("Failed to check availability for", rawDate);
+          }
+        })
+      );
+      
+      setFullyBookedDates(bookedSet);
+      
+      // Auto-select first available date if today is fully booked
+      if (bookedSet.has(0)) {
+        for (let i = 1; i < dates.length; i++) {
+          if (!bookedSet.has(i)) {
+            setSelectedDate(i);
+            break;
+          }
+        }
+      }
+    }
+    
+    checkAvailability();
   }, [turfId]);
 
   const selectedDateObj = dates[selectedDate]?.date;
@@ -226,8 +313,8 @@ export default function TurfDetailPage() {
                   <span className="text-sm font-semibold text-[#737688] uppercase tracking-wide block mb-1">Price per hour</span>
                   <div className="text-3xl font-extrabold text-[#0b1c30]">₹{turfDetail.price}</div>
                 </div>
-                <div className="flex items-center gap-1 text-[#003ec7] font-semibold bg-[#e5eeff] px-2 py-1 rounded">
-                  <Clock className="w-4 h-4" /> Open 24/7
+                <div className="flex items-center gap-1.5 text-[#003ec7] font-semibold bg-[#e5eeff] px-2.5 py-1.5 rounded-md text-sm">
+                  <Users className="w-4 h-4" /> {getPlayerFormat(turfDetail.sport)}
                 </div>
               </div>
 
@@ -246,24 +333,41 @@ export default function TurfDetailPage() {
                   <h3 className="font-bold text-[#0b1c30]">Select Date</h3>
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                  {dates.map((item, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedDate(index)}
-                      className={`flex flex-col items-center justify-center min-w-[72px] p-3 rounded-xl border transition-all ${selectedDate === index
-                          ? "bg-[#003ec7] border-[#003ec7] text-white shadow-md transform -translate-y-1"
-                          : "bg-white border-[#c3c5d9] text-[#434656] hover:border-[#003ec7]"
-                        }`}
-                    >
-                      <span className={`text-xs font-semibold uppercase ${selectedDate === index ? "text-[#dce9ff]" : "text-[#737688]"}`}>
-                        {item.month}
-                      </span>
-                      <span className="text-xl font-bold my-0.5">{item.dayNumber}</span>
-                      <span className={`text-xs ${selectedDate === index ? "text-white" : "text-[#0b1c30]"}`}>
-                        {item.dayName}
-                      </span>
-                    </button>
-                  ))}
+                  {dates.map((item, index) => {
+                    const isFullyBooked = fullyBookedDates.has(index);
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => !isFullyBooked && setSelectedDate(index)}
+                        disabled={isFullyBooked}
+                        className={`relative flex flex-col items-center justify-center min-w-[72px] p-3 rounded-xl border transition-all ${
+                            isFullyBooked
+                            ? "bg-[#f4f6fb] border-[#dde3f0] text-[#aab0c8] cursor-not-allowed opacity-70"
+                            : selectedDate === index
+                            ? "bg-[#003ec7] border-[#003ec7] text-white shadow-md transform -translate-y-1"
+                            : "bg-white border-[#c3c5d9] text-[#434656] hover:border-[#003ec7] cursor-pointer"
+                          }`}
+                      >
+                        <span className={`text-xs font-semibold uppercase ${
+                          isFullyBooked ? "text-[#aab0c8]" : selectedDate === index ? "text-[#dce9ff]" : "text-[#737688]"
+                        }`}>
+                          {item.month}
+                        </span>
+                        <span className="text-xl font-bold my-0.5">{item.dayNumber}</span>
+                        <span className={`text-xs ${
+                          isFullyBooked ? "text-[#aab0c8]" : selectedDate === index ? "text-white" : "text-[#0b1c30]"
+                        }`}>
+                          {item.dayName}
+                        </span>
+                        
+                        {isFullyBooked && (
+                          <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm border border-white">
+                            Sold Out
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -271,7 +375,7 @@ export default function TurfDetailPage() {
               <div className="mb-6 flex items-start gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
                 <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                 <p className="text-sm text-red-700 font-medium leading-relaxed">
-                  Cancellations and refunds are not allowed for turf bookings. Please confirm your date before proceeding.
+                  Cancelation will be done only 24 hrs before the booking time.
                 </p>
               </div>
 

@@ -57,6 +57,7 @@ interface BookingSummary {
   location: string;
   createdAt?: string;
   imageUrl?: string;
+  status?: string;
 }
 
 function getInitials(name: string) {
@@ -81,6 +82,10 @@ export default function ProfilePage() {
   const [bookings, setBookings] = useState<BookingSummary[]>([]);
   const [showAllBookings, setShowAllBookings] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  
+  // Cancellation states
+  const [bookingToCancel, setBookingToCancel] = useState<BookingSummary | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
   
   // Ref for the hidden file input
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -260,10 +265,45 @@ export default function ProfilePage() {
     );
   }
 
-  // Determine which data to display based on whether we are in edit mode
   const displayData = isEditing && editFormData ? editFormData : userData;
 
+  const canCancelBooking = (b: BookingSummary) => {
+    if (b.status === 'CANCELLED') return false;
+    
+    let startTime = new Date(b.date).getTime();
+    if (b.type === 'turf' && b.slots && b.slots.length > 0) {
+      const earliestSlot = b.slots.reduce((earliest, current) => {
+        return current.split(' - ')[0] < earliest.split(' - ')[0] ? current : earliest;
+      });
+      const d = new Date(b.date);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      startTime = new Date(`${dateStr}T${earliestSlot.split(' - ')[0]}:00`).getTime();
+    } else {
+      const d = new Date(b.date);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      startTime = new Date(`${dateStr}T10:00:00`).getTime();
+    }
+    return startTime - Date.now() >= 24 * 60 * 60 * 1000;
+  };
+
+  const handleCancelConfirm = async () => {
+    if (!bookingToCancel?.bookingId) return;
+    setIsCancelling(true);
+    try {
+      await paymentService.cancelBooking(bookingToCancel.bookingId);
+      toast.success("Booking cancelled and refund initiated.");
+      setBookings(prev => prev.map(b => b.bookingId === bookingToCancel.bookingId ? { ...b, status: 'CANCELLED' } : b));
+    } catch (error: any) {
+      toast.error(error.message || "Failed to cancel booking");
+    } finally {
+      setIsCancelling(false);
+      setBookingToCancel(null);
+    }
+  };
+
   const upcomingBookings = bookings.filter(b => {
+    if (b.status === 'CANCELLED') return false;
+    
     const now = new Date();
     if (b.slots && b.slots.length > 0) {
       let isFuture = false;
@@ -519,6 +559,11 @@ export default function ProfilePage() {
                           <span className="absolute bottom-4 left-4 z-20 bg-white/90 backdrop-blur-md text-[#003ec7] text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest shadow-sm">
                             {booking.type === "turf" ? booking.sportOrCategory : "Event"}
                           </span>
+                          {booking.status === 'CANCELLED' && (
+                            <span className="absolute top-4 left-4 z-20 bg-red-500 text-white text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest shadow-sm">
+                              Cancelled
+                            </span>
+                          )}
                         </div>
                         <div className="p-6 sm:p-8 flex-1 flex flex-col justify-between">
                           <div>
@@ -551,9 +596,26 @@ export default function ProfilePage() {
                               <span className="text-[10px] font-bold text-[#737688] uppercase tracking-widest mb-0.5">Total Paid</span>
                               <span className="text-lg font-black text-[#0b1c30]">₹{booking.total}</span>
                             </div>
-                            <Link href={`/booking-success?booking_id=${booking.bookingId || (booking as any).id}`} className="bg-[#003ec7] hover:bg-[#0038b6] hover:shadow-lg hover:shadow-[#003ec7]/30 transition-all text-white font-bold text-sm py-3 px-6 rounded-xl flex items-center justify-center gap-2 group/btn">
-                              View Ticket <ArrowLeft className="w-4 h-4 rotate-180 transform group-hover/btn:translate-x-1 transition-transform" />
-                            </Link>
+                            
+                            <div className="flex gap-2">
+                              {booking.status !== 'CANCELLED' && (
+                                <button 
+                                  onClick={() => setBookingToCancel(booking)}
+                                  disabled={!canCancelBooking(booking)}
+                                  title={!canCancelBooking(booking) ? "Cancellation unavailable (<24h)" : "Cancel Booking"}
+                                  className={`bg-white border text-sm font-bold py-3 px-6 rounded-xl flex items-center justify-center transition-all ${
+                                    canCancelBooking(booking)
+                                      ? "border-[#ffdad6] text-[#e11d48] hover:bg-[#fff1f0]"
+                                      : "border-[#dde3f0] text-[#aab0c8] cursor-not-allowed"
+                                  }`}
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                              <Link href={`/booking-success?booking_id=${booking.bookingId || (booking as any).id}`} className="bg-[#003ec7] hover:bg-[#0038b6] hover:shadow-lg hover:shadow-[#003ec7]/30 transition-all text-white font-bold text-sm py-3 px-6 rounded-xl flex items-center justify-center gap-2 group/btn">
+                                View Ticket <ArrowLeft className="w-4 h-4 rotate-180 transform group-hover/btn:translate-x-1 transition-transform" />
+                              </Link>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -598,6 +660,44 @@ export default function ProfilePage() {
                 className="px-5 py-2.5 text-sm font-bold rounded-xl bg-[#ffdad6] text-[#93000a] hover:bg-[#ba1a1a] hover:text-white transition-colors"
               >
                 Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancellation Confirmation Modal */}
+      {bookingToCancel && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0b1c30]/40 p-4">
+          <div className="bg-white p-6 md:p-8 rounded-3xl shadow-2xl flex flex-col gap-3 w-full max-w-md transform transition-all animate-in fade-in zoom-in duration-200">
+            <h3 className="font-bold text-xl text-[#0b1c30]">Cancel Booking</h3>
+            <div className="bg-[#fff1f0] border border-[#ffdad6] p-4 rounded-xl mt-2 mb-4">
+              <p className="text-[#93000a] text-sm font-medium">
+                Are you sure you want to cancel your booking for <strong>{bookingToCancel.itemName}</strong>?
+              </p>
+              <p className="text-[#e11d48] text-xs mt-2">
+                A full refund of ₹{bookingToCancel.total} will be initiated to your original payment method.
+              </p>
+            </div>
+            
+            <div className="flex justify-end gap-3 mt-2">
+              <button 
+                disabled={isCancelling}
+                onClick={() => setBookingToCancel(null)}
+                className="px-5 py-2.5 text-sm font-bold rounded-xl text-[#434656] bg-[#f4f7fb] hover:bg-[#e5eeff] hover:text-[#003ec7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Keep Booking
+              </button>
+              <button 
+                disabled={isCancelling}
+                onClick={handleCancelConfirm}
+                className="px-5 py-2.5 text-sm font-bold rounded-xl bg-[#e11d48] text-white hover:bg-[#be123c] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCancelling ? (
+                  <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Processing...</>
+                ) : (
+                  "Confirm Cancellation"
+                )}
               </button>
             </div>
           </div>
